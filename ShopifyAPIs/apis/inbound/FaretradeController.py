@@ -25,13 +25,13 @@ class FaretradeController:
                 'Content-Type': 'application/json',
             }
             sender = {
-                "Id": "Default CA",
-                "Country": "XX",
-                "State": "XX",
-                "City": "XXX",
-                "PostalCode": "XXX XXX",
-                "Address1": "XX XXXXX XXXX.",
-                "CompanyName": "XXXXX XXXXXX",
+                "Id": "XXXXXXXXXXXXXX",
+                "Country": "XXXXXXXXXXXXXX",
+                "State": "XXXXXXXXXXXXXX",
+                "City": "XXXXXXXXXXXXXX",
+                "PostalCode": "XXXXXXXXXXXXXX",
+                "Address1": "XXXXXXXXXXXXXX",
+                "CompanyName": "COMPANY NAME",
                 "IsResidential": False
             }
             recipient = {
@@ -338,13 +338,13 @@ class FaretradeController:
             endpoint = 'https://atlasapi.2ship.com/api/Ship_V1'
             headers = {'Content-Type': 'application/json'}
             sender = {
-                "Id": "Default CA",
-                "CompanyName": "XXXX XXXXXX",
-                "Country": "XX",
-                "State": "XX",
-                "City": "XXXXXX-XXXXXX",
-                "PostalCode": "XXX XXX",
-                "Address1": "XX XXXXXXX XXXXXX.",
+                "Id": "XXXXXXXXXXXXXX",
+                "CompanyName": "COMPANY NAME",
+                "Country": "XXXXXXXXXXXXXX",
+                "State": "XXXXXXXXXXXXXX",
+                "City": "XXXXXXXXXXXXXX",
+                "PostalCode": "XXXXXXXXXXXXXX",
+                "Address1": "XXXXXXXXXXXXXX",
                 "IsResidential": False
             }
             recipient = {

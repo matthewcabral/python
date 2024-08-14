@@ -291,7 +291,7 @@ class ProductController(DataController):
             email_body += '\n[INFO] Execution ended.\n\n'
 
             email_subject = "[Products] Resume of execution"
-            email_to = ['xxxx']
+            email_to = ['matheus@COMPANY_NAME.com', 'victor@COMPANY_NAME.com', 'joao@COMPANY_NAME.com','sabrina@COMPANY_NAME.com']
             self.utils.send_email(email_to=email_to, email_subject=email_subject, email_body=email_body)
 
         self.clear_counters()
@@ -413,7 +413,7 @@ class ProductController(DataController):
             print(f"[INFO] Getting all products - Run {run_counter} of {max_runs}")
 
             if run_counter <= 1:
-                self.utils.set_start_time(time.time())
+                self.utils.set_start_time(self.utils.get_current_date_time())
             if max_runs == None or max_runs == "" or max_runs == "0":
                 print('[DONE] Finished getting products because max_runs is None.')
                 return
@@ -480,7 +480,7 @@ class ProductController(DataController):
                     print('[DONE] Finished getting products because it reached the maximum runs.')
                     self.execution_summary(is_webhook=False, send_email=True)
         except Exception as e:
-            self.utils.set_end_time(time.time())
+            self.utils.set_end_time(self.utils.get_current_date_time())
             try:
                 del product
             except:
@@ -612,3 +612,7 @@ class ProductController(DataController):
                     return is_upserted_success, response_description, status_code
             except Exception as e:
                 return False, f"[ERROR] Error while upserting product.\tProduct id: {product_json.get("id")}. {e}", 400
+
+    #def webhook_delete_product(self, product_json):
+
+    #def webhook_edit_product(self, product_json):

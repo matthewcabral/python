@@ -152,32 +152,24 @@ class SysPrefController(DataController):
         columns_array = ["*"]
         condition = (f"PREF_NAME = '{sysPrefName}'")
         value = None
+        return_flag = False
+        result_query = None
 
         try:
-            result_query = super().query_record(super().get_tbl_SYS_PREF(), columns_array, condition)
+            return_flag, result_query = super().query_record(super().get_tbl_SYS_PREF(), columns_array, condition)
 
-            
-            if result_query:
-                columns, rows = result_query
-                if columns and rows:
-                    for row in rows:
-                        row_dict = dict(zip(columns, row))
-                        value = row_dict["PREF_VAL"]
+            if return_flag:
+                for row in result_query:
+                    value = row["PREF_VAL"]
 
-                    return True, value, 200
-                else:
-                    return False, f"[INFO] Sys Pref not found. Sys Pref: {sysPrefName}", 404
+                return True, value, 200
+            else:
+                return False, f"[INFO] Sys Pref not found. Sys Pref: {sysPrefName}", 404
         except Exception as e:
             return False, str(e), 500
         finally:
             try:
-                del columns_array
-                del result_query
-                del columns
-                del rows
-                del row_dict
-                del condition
-                del value
+                del columns_array, return_flag, result_query, columns, row, condition, value
             except:
                 pass
 
@@ -186,19 +178,16 @@ class SysPrefController(DataController):
         sys_pref_array = []
 
         try:
-            result_query = super().query_record(super().get_tbl_SYS_PREF(), columns, None)
+            return_flag, result_query = super().query_record(super().get_tbl_SYS_PREF(), columns, None)
 
-            if result_query:
-                columns, rows = result_query
-                if columns and rows:
-                    for row in rows:
-                        row_dict = dict(zip(columns, row))
-                        sys_pref_array.append(row_dict)
+            if return_flag:
+                for row in result_query:
+                    sys_pref_array.append(row)
 
-                    return True, sys_pref_array, 200
-                else:
-                    sys_pref_array = []
-                    return False, f"[INFO] Sys Pref not found.", 404
+                return True, sys_pref_array, 200
+            else:
+                sys_pref_array = []
+                return False, f"[INFO] Sys Pref not found.", 404
         except Exception as e:
             return False, str(e), 500
         finally:
@@ -206,8 +195,7 @@ class SysPrefController(DataController):
                 del result_query
                 del sys_pref_array
                 del columns
-                del rows
-                del row_dict
+                del row
             except:
                 pass
 

@@ -6,6 +6,7 @@ from apis.outbound.ApiController import ApiController
 
 class App:
     def __init__(self):
+        sys.dont_write_bytecode = True
         load_dotenv()
         self.api = ApiController()
         self.run()

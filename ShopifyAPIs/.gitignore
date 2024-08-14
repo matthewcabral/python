@@ -1,0 +1,7 @@
+
+.env
+__pycache__/
+*.pdf
+*.DS_Store
+files/pdfs/.DS_Store
+*.code-workspace

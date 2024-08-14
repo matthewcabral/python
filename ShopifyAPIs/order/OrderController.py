@@ -2,41 +2,71 @@ from database.DataController import DataController
 from utils.UtilsController import *
 from utils.LogsController import *
 from apis.inbound.ShopifyController import *
+from product.PhoneCasesController import *
+from utils.PrintingController import *
+from system.SysPrefController import *
+# from product.CustomsProductController import CustomsProductController
 from mq.MQController import *
+from order.BillingAddressController import *
+from order.ShippingAddressController import *
+from order.DiscountCodes import *
+from order.DiscountApplications import *
+from order.Fulfillments import *
+from order.Refunds import *
+import re
+import gc
 
 class OrderController(DataController):
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if cls._instance is None:
+            cls._instance = super(OrderController, cls).__new__(cls, *args, **kwargs)
+        return cls._instance
+
     # CONSTRUCTOR
     def __init__(self):
-        sys.setrecursionlimit(10**6)
-        super().__init__()
-        self.utils = UtilsController()
-        self.shopify = ShopifyController()
-        self.log = LogsController()
-        self.mq = MQController()
+        if not hasattr(self, '_initialized'):  # Ensure __init__ is only called once
+            sys.setrecursionlimit(10**6)
+            super().__init__()  # Call the initializer of DataController
+            self._initialized = True 
+            self.utils = UtilsController()
+            self.shopify = ShopifyController()
+            self.log = LogsController()
+            self.phone_cases = PhoneCasesController()
+            self.printing = PrintingController()
+            self.syspref = SysPrefController()
+            # self.customs = CustomsProductController()
+            self.mq = MQController()
+            self.billing_address = BillingAddressController()
+            self.shipping_address = ShippingAddressController()
+            self.discount_cds = DiscountCodeController()
+            self.discount_apps = DiscountApplicationsController()
+            self.fulfill = FulfillmentsController()
+            self.refunds = RefundsController()
 
-        # Order Variables
-        self.order_count = 0
-        self.total_order_count = 0
-        self.total_order_inserted_count = 0
-        self.total_order_updated_count = 0
-        self.total_order_deleted_count = 0
-        self.total_order_with_errors = 0
-        self.order_with_error_array = []
+            # Order Variables
+            self.order_count = 0
+            self.total_order_count = 0
+            self.total_order_inserted_count = 0
+            self.total_order_updated_count = 0
+            self.total_order_deleted_count = 0
+            self.total_order_with_errors = 0
+            self.order_with_error_array = []
 
-        # Order Line Item Variables
-        self.order_line_item_count = 0
-        self.total_order_line_item_count = 0
-        self.total_order_line_item_inserted_count = 0
-        self.total_order_line_item_updated_count = 0
-        self.total_order_line_item_deleted_count = 0
-        self.total_order_line_item_with_errors = 0
-        self.order_line_item_with_error_array = []
+            # Order Line Item Variables
+            self.order_line_item_count = 0
+            self.total_order_line_item_count = 0
+            self.total_order_line_item_inserted_count = 0
+            self.total_order_line_item_updated_count = 0
+            self.total_order_line_item_deleted_count = 0
+            self.total_order_line_item_with_errors = 0
+            self.order_line_item_with_error_array = []
 
-        self.module_name = "OrderController"
+            self.module_name = "OrderController"
 
     # ORDER CLASSES
     class Order():
-
         def __init__(self):
             self.app_id = None
             self.billing_address = None
@@ -928,6 +958,249 @@ class OrderController(DataController):
         def set_admin_graphql_api_id(self, value):
             self.admin_graphql_api_id = value
 
+    class CustomOrdersManagement():
+        def __init__(self):
+            self.order_processing_id = None
+            self.id = None
+            self.name = None
+            self.country = None
+            self.country_code = None
+            self.location_id = None
+            self.location_name = None
+            self.created_at = None
+            self.font = None
+            self.custom_text = None
+            self.prod_name = None
+            self.prod_sku = None
+            self.quantity = None
+            self.vendor_id = None
+            self.vendor_name = None
+            self.sent_to_vendor_date = None
+            self.sorority_flg = None
+            self.sent_by_vendor_flg = None
+            self.shipped_date = None
+            self.tracking_number = None
+            self.tracking_url = None
+            # self.tracking_delivered_date = None
+            self.received_flg = None
+            self.received_date = None
+            self.received_by = None
+            self.received_notes = None
+            self.fulfilled_flg = None
+            self.fulfilled_date = None
+            self.vendor_processing_time = None
+            self.vendor_processing_time_unit = None
+            self.total_shipping_time = None
+            self.total_shipping_time_unit = None
+            self.total_processing_time = None
+            self.total_processing_time_unit = None
+
+        # Getters
+        def get_order_processing_id(self):
+            return self.order_processing_id
+
+        def get_id(self):
+            return self.id
+
+        def get_name(self):
+            return self.name
+
+        def get_country(self):
+            return self.country
+
+        def get_country_code(self):
+            return self.country_code
+
+        def get_location_id(self):
+            return self.location_id
+
+        def get_location_name(self):
+            return self.location_name
+
+        def get_created_at(self):
+            return self.created_at
+
+        def get_font(self):
+            return self.font
+
+        def get_custom_text(self):
+            return self.custom_text
+
+        def get_prod_name(self):
+            return self.prod_name
+
+        def get_prod_sku(self):
+            return self.prod_sku
+
+        def get_quantity(self):
+            return self.quantity
+
+        def get_vendor_id(self):
+            return self.vendor_id
+
+        def get_vendor_name(self):
+            return self.vendor_name
+
+        def get_sent_to_vendor_date(self):
+            return self.sent_to_vendor_date
+
+        def get_sorority_flg(self):
+            return self.sorority_flg
+
+        def get_sent_by_vendor_flg(self):
+            return self.sent_by_vendor_flg
+
+        def get_shipped_date(self):
+            return self.shipped_date
+
+        def get_tracking_number(self):
+            return self.tracking_number
+
+        def get_tracking_url(self):
+            return self.tracking_url
+
+        # def get_tracking_delivered_date(self):
+        #     return self.tracking_delivered_date
+
+        def get_received_flg(self):
+            return self.received_flg
+
+        def get_received_date(self):
+            return self.received_date
+
+        def get_received_by(self):
+            return self.received_by
+
+        def get_received_notes(self):
+            return self.received_notes
+
+        def get_fulfilled_flg(self):
+            return self.fulfilled_flg
+
+        def get_fulfilled_date(self):
+            return self.fulfilled_date
+
+        def get_vendor_processing_time(self):
+            return self.vendor_processing_time
+
+        def get_vendor_processing_time_unit(self):
+            return self.vendor_processing_time_unit
+
+        def get_total_shipping_time(self):
+            return self.total_shipping_time
+
+        def get_total_shipping_time_unit(self):
+            return self.total_shipping_time_unit
+
+        def get_total_processing_time(self):
+            return self.total_processing_time
+
+        def get_total_processing_time_unit(self):
+            return self.total_processing_time_unit
+
+        # Setters
+        def set_order_processing_id(self, order_processing_id):
+            self.order_processing_id = order_processing_id
+
+        def set_id(self, id):
+            self.id = id
+
+        def set_name(self, name):
+            self.name = name
+
+        def set_country(self, country):
+            self.country = country
+
+        def set_country_code(self, country_code):
+            self.country_code = country_code
+
+        def set_location_id(self, location_id):
+            self.location_id = location_id
+
+        def set_location_name(self, location_name):
+            self.location_name = location_name
+
+        def set_created_at(self, created_at):
+            self.created_at = created_at
+
+        def set_font(self, font):
+            self.font = font
+
+        def set_custom_text(self, custom_text):
+            self.custom_text = custom_text
+
+        def set_prod_name(self, prod_name):
+            self.prod_name = prod_name
+
+        def set_prod_sku(self, prod_sku):
+            self.prod_sku = prod_sku
+
+        def set_quantity(self, quantity):
+            self.quantity = quantity
+
+        def set_vendor_id(self, vendor_id):
+            self.vendor_id = vendor_id
+
+        def set_vendor_name(self, vendor_name):
+            self.vendor_name = vendor_name
+
+        def set_sent_to_vendor_date(self, sent_to_vendor_date):
+            self.sent_to_vendor_date = sent_to_vendor_date
+
+        def set_sorority_flg(self, sorority_flg):
+            self.sorority_flg = sorority_flg
+
+        def set_sent_by_vendor_flg(self, sent_by_vendor_flg):
+            self.sent_by_vendor_flg = sent_by_vendor_flg
+
+        def set_shipped_date(self, shipped_date):
+            self.shipped_date = shipped_date
+
+        def set_tracking_number(self, tracking_number):
+            self.tracking_number = tracking_number
+
+        def set_tracking_url(self, tracking_url):
+            self.tracking_url = tracking_url
+
+        # def set_tracking_delivered_date(self, tracking_delivered_date):
+        #     self.tracking_delivered_date = tracking_delivered_date
+
+        def set_received_flg(self, received_flg):
+            self.received_flg = received_flg
+
+        def set_received_date(self, received_date):
+            self.received_date = received_date
+
+        def set_received_by(self, received_by):
+            self.received_by = received_by
+
+        def set_received_notes(self, received_notes):
+            self.received_notes = received_notes
+
+        def set_fulfilled_flg(self, fulfilled_flg):
+            self.fulfilled_flg = fulfilled_flg
+
+        def set_fulfilled_date(self, fulfilled_date):
+            self.fulfilled_date = fulfilled_date
+
+        def set_vendor_processing_time(self, vendor_processing_time):
+            self.vendor_processing_time = vendor_processing_time
+
+        def set_vendor_processing_time_unit(self, vendor_processing_time_unit):
+            self.vendor_processing_time_unit = vendor_processing_time_unit
+
+        def set_total_shipping_time(self, total_shipping_time):
+            self.total_shipping_time = total_shipping_time
+
+        def set_total_shipping_time_unit(self, total_shipping_time_unit):
+            self.total_shipping_time_unit = total_shipping_time_unit
+
+        def set_total_processing_time(self, total_processing_time):
+            self.total_processing_time = total_processing_time
+
+        def set_total_processing_time_unit(self, total_processing_time_unit):
+            self.total_processing_time_unit = total_processing_time_unit
+
     # GETTERS
     def get_order_count(self):
         return self.order_count
@@ -1089,8 +1362,8 @@ class OrderController(DataController):
             email_body += '\n\n[INFO] Execution ended.\n\n'
 
             email_subject = "[Orders] Resume of execution"
-            email_to = ['xxx']
-            email_from = "xxx"
+            email_to = ['xxxxxx@COMPANY_NAME.com']
+            email_from = "xxxxxxxx@gmail.com"
             self.utils.send_email(email_from=email_from, email_to=email_to, email_subject=email_subject, email_body=email_body, file_names=None, file_path=None)
 
         self.clear_counters()
@@ -1113,8 +1386,11 @@ class OrderController(DataController):
 
         print(final_message)
 
+    def print_fulfillment_log(self, count_orders, total_orders_to_fulfill, order_number, order_fulfillment_status, tracking_number, line_item_id, fulfillment_id, fulfillment_status, description):
+        print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}{line_item_id}{fulfillment_id}{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}{description}")
+
     # DATABASE FUNCTIONS
-    def get_last_processed_order_id(self):
+    def get_last_processed_order_id_batch(self):
         print(f"\n[INFO] BEGIN - Getting last processed order id...")
         try:
             # Variables
@@ -1132,7 +1408,7 @@ class OrderController(DataController):
 
             return last_order_id
         except Exception as e:
-            print(f"[ERROR] get_last_processed_order_id: {str(e)}")
+            print(f"[ERROR] get_last_processed_order_id_batch: {str(e)}")
             return last_order_id
         finally:
             print(f"[INFO] END - Got last processed order id... Last Order ID: {last_order_id}")
@@ -1144,6 +1420,41 @@ class OrderController(DataController):
                 del result_flag
                 del row
                 del last_order_id
+            except:
+                pass
+
+    def get_last_processed_order_id(self, process_type):
+        print(f"[INFO] BEGIN - Getting last processed order id for process type: {process_type}")
+        # Variables
+        return_flag = False
+        result_query = None
+        last_processed_order_id = None
+        columns = ["MAX(LAST_ID) AS LAST_ID"]
+        condition = "1=1"
+        condition += f"\nAND PROCESS_TYPE = '{process_type}'"
+
+        try:
+            return_flag, result_query = super().query_record(super().get_tbl_ORDER_PROCESSING(), columns, condition)
+            
+            if return_flag:
+                for row in result_query:
+                    last_processed_order_id = row.get("LAST_ID")
+                print(f"[INFO] Last processed order id: {last_processed_order_id}")
+                return last_processed_order_id
+            else:
+                return None
+        except Exception as e:
+            print(f"[ERROR] - {e}")
+            return None
+        finally:
+            print(f"[INFO] END - Got last processed order Id")
+            print("[INFO] - Cleaning up variables")
+            try:
+                del return_flag
+                del result_query
+                del last_processed_order_id
+                del columns
+                del condition
             except:
                 pass
 
@@ -1164,6 +1475,14 @@ class OrderController(DataController):
             condition += f"\nAND CREATED_AT >= '{created_at_min}'" if created_at_min is not None and created_at_min != "" else ""
             condition += f"\nAND CREATED_AT <= '{created_at_max}'" if created_at_max is not None and created_at_max != "" else ""
             condition += f"\nAND FULFILLMENT_STATUS IS NULL"
+            condition += f"\nAND CANCELLED_AT IS NULL"
+            condition += f"\nAND PROCESSED_DATE IS NULL"
+            condition += f"\nAND PRINTED_DATE IS NULL"
+            condition += f"\nAND FULFILLED_DATE IS NULL"
+            condition += f"\nAND SHIPPING_LABEL_URL IS NULL"
+            condition += f"\nAND TRACKING_INFO IS NULL"
+            condition += f"\nAND TOTAL_PRICE > 0"
+            condition += f"\nAND TAGS NOT LIKE '%XXXXXXXX%'"
             condition += f"\nORDER BY ID ASC"
             condition += f"\nLIMIT {limit}" if limit is not None and limit != "" and limit != "0" else "\nLIMIT 100"
 
@@ -1191,6 +1510,168 @@ class OrderController(DataController):
                 del row
                 del order_ids
                 del last_order_id
+            except:
+                pass
+
+    def get_all_custom_orders(self, since_id, created_at):
+        print(f"\n[INFO] BEGIN - Getting Custom Orders...")
+        columns = ["ID", "NAME", "CREATED_AT", "TAGS", "COUNTRY_CODE"]
+        condition = "1=1"
+        # condition += f"\nAND ID > '{since_id}'"
+        # condition += f"\nAND ID > '4944443736141'"
+        # condition += f"\nAND ID <= '4906226647117'"
+        condition += f"\nAND NAME IN ('#A3096976', '#A3095605', '#A3095636')"
+        # condition += f"\nAND CREATED_AT < DATE_FORMAT('{created_at}', '%Y-%m-%d %H:%i:%s')"
+        # condition += f"\nORDER BY ID ASC"
+        # condition += f"\nLIMIT 10"
+        return_flag = False
+        result_query = None
+
+        try:
+            return_flag, result_query = super().query_record(super().get_view_UNF_CUSTOMS_ORDERS_VIEW(), columns, condition)
+
+            return return_flag, result_query
+        except Exception as e:
+            self.utils.send_exception_email(module=self.get_module_name(), function="get_all_custom_orders", error=str(e), additional_info=None, start_time=self.get_start_time(), end_time=self.utils.get_current_date_time())
+            print(f"[ERROR] Error while getting custom orders: {str(e)}")
+            return False, str(e)
+        finally:
+            print(f"[INFO] END - Got Custom Orders.")
+            print(f"[INFO] Clearing variables...")
+            try:
+                del columns, condition, result_query, return_flag
+            except:
+                pass
+
+    def get_all_custom_order_line_items(self, order_id):
+        # print(f"\n[INFO] BEGIN - Getting Custom Order Line Items...")
+        columns = ["ID", "ORDER_ID", "NAME", "QUANTITY", "PRICE", "SKU", "PRODUCT_ID", "TITLE", "VARIANT_ID", "VARIANT_TITLE", "VENDOR", "PROPERTIES"]
+        condition = "1=1"
+        condition += f"\nAND ORDER_ID = '{order_id}'"
+        condition += f"\nAND TITLE LIKE '%Custom/Personalized%'"
+        return_flag = False
+        result_query = None
+
+        try:
+            return_flag, result_query = super().query_record(super().get_tbl_ORDER_LINE_ITEM(), columns, condition)
+            return return_flag, result_query
+        except Exception as e:
+            print(f"[ERROR] Error while getting custom order line items: {str(e)}")
+            return False, None
+        finally:
+            # print(f"[INFO] END - Got Custom Order Line Items.")
+            # print(f"[INFO] Clearing variables...")
+            try:
+                del columns
+                del condition
+                del result_query
+                del return_flag
+            except:
+                pass
+
+    def insert_processed_order_id(self, process_type, first_id, last_id, total_orders, status):
+        print(f"[INFO] BEGIN - Inserting new processed orders ids for process type: {process_type}")
+
+        columns = ["PROCESS_TYPE", "FIRST_ID", "LAST_ID", "TOTAL_ORDERS", "STATUS"]
+        values = []
+        row_id = None
+        return_flag = False
+        rowcount = None
+        return_string = None
+
+        if process_type is None or process_type == "":
+            return False, "Process Type is required."
+        if first_id is None or first_id == "":
+            return False, "First ID is required."
+        if last_id is None or last_id == "":
+            return False, "Last ID is required."
+
+        status = "Created" if status is None or status == "" else status
+        total_orders = 0 if total_orders is None or total_orders == "" else int(total_orders)
+
+        try:
+            values = [process_type, first_id, last_id, total_orders, status]
+            return_flag, rowcount, return_string = super().insert_record(super().get_tbl_ORDER_PROCESSING(), columns, values)
+            if return_flag:
+                columns = ["ROW_ID"]
+                condition = "1=1"
+                condition += f"\nAND PROCESS_TYPE = '{process_type}'"
+                condition += f"\nAND FIRST_ID = '{first_id}'"
+                condition += f"\nAND LAST_ID = '{last_id}'"
+                condition += f"\nAND TOTAL_ORDERS = '{total_orders}'"
+                condition += f"\nAND STATUS = '{status}'"
+                return_flag, result_query = super().query_record(super().get_tbl_ORDER_PROCESSING(), columns, condition)
+
+                if return_flag:
+                    for row in result_query:
+                        row_id = row.get("ROW_ID")
+
+                    return True, rowcount, return_string, row_id
+            else:
+                return False, 0, return_string, row_id
+        except Exception as e:
+            print(f"[ERROR] - {e}")
+            return False, 0, str(e), row_id
+        finally:
+            print(f"[INFO] END - Inserted new processed orders ids for process type: {process_type}. Row ID: {row_id}")
+            print("[INFO] Cleaning up variables")
+            try:
+                del columns
+                del values
+                del row_id
+                del return_flag
+                del rowcount
+                del return_string
+            except:
+                pass
+
+    def update_processed_order_id(self, row_id, process_type, first_id, last_id, total_orders, status):
+        print(f"\n[INFO] BEGIN - Updating processed orders ids...")
+
+        columns = []
+        values = []
+        return_flag = False
+        rowcount = None
+        return_string = None
+        condition = f"ROW_ID = '{row_id}'"
+
+        if row_id is None or row_id == "":
+            return False, 0, "Row ID is required."
+        if process_type is None and first_id is None and last_id is None and total_orders is None and status is None:
+            return False, 0, "At least one field is required to update."
+
+        if process_type is not None and process_type != "":
+            columns.append("PROCESS_TYPE")
+            values.append(process_type)
+        if first_id is not None and first_id != "":
+            columns.append("FIRST_ID")
+            values.append(first_id)
+        if last_id is not None and last_id != "":
+            columns.append("LAST_ID")
+            values.append(last_id)
+        if total_orders is not None and total_orders != "":
+            columns.append("TOTAL_ORDERS")
+            values.append(total_orders)
+        if status is not None and status != "":
+            columns.append("STATUS")
+            values.append(status)
+
+        try:
+            return_flag, rowcount, return_string = super().update_record(super().get_tbl_ORDER_PROCESSING(), columns, values, condition)
+            return return_flag, rowcount, return_string
+        except Exception as e:
+            print(f"[ERROR] - {e}")
+            return False, 0, str(e)
+        finally:
+            print(f"[INFO] END - Updated processed orders ids.")
+            print("[INFO] - Cleaning up variables")
+            try:
+                del columns
+                del values
+                del return_flag
+                del rowcount
+                del return_string
+                del condition
             except:
                 pass
 
@@ -1247,8 +1728,8 @@ class OrderController(DataController):
         row_Inserted_Flag = False
         return_string = "Success"
 
-        sql_header = f"""INSERT INTO {super().get_DB_OWNER()}.{super().get_tbl_ORDER_STAGING()}"""
-        sql_column = f""" (ORDER_JSON)"""
+        sql_header = f"INSERT INTO {super().get_DB_OWNER()}.{super().get_tbl_ORDER_STAGING()}"
+        sql_column = f" (ORDER_JSON)"
         sql_value = f" VALUES ('{self.utils.replace_special_chars(self.utils.convert_object_to_json(order_json))}')"
         sql_final_cmd = sql_header + sql_column + sql_value
 
@@ -1308,12 +1789,12 @@ class OrderController(DataController):
                                 print(f"[INFO] Removing order from staging table...\tOrder: {last_order_id}")
                                 self.delete_staging_table(id=last_staging_table_row_id)
                     else:
-                        self.utils.set_end_time(time.time())
+                        self.utils.set_end_time(self.utils.get_current_date_time())
                         print("[INFO] No orders found.")
                         print(f"[INFO] Waiting {self.utils.get_WAIT_TIME()} second(s) to try again...")
                         time.sleep(int(self.utils.get_WAIT_TIME()))
                 else:
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     print("[INFO] No orders found.")
                     print(f"[INFO] Waiting {self.utils.get_WAIT_TIME()} second(s) to try again...")
                     time.sleep(int(self.utils.get_WAIT_TIME()))
@@ -1398,7 +1879,7 @@ class OrderController(DataController):
                 print(f"\n[INFO] Getting all orders line items...\t Run {runCounter} of {maxRuns} - Limit: {limit} - Since Id: {since_id}\n")
 
                 if runCounter <= 1:
-                    self.utils.set_start_time(time.time())
+                    self.utils.set_start_time(self.utils.get_current_date_time())
                 if maxRuns == None or maxRuns == "" or maxRuns == "0":
                     print('[DONE] Finished getting orders because maxRuns is None.')
                     return
@@ -1491,15 +1972,15 @@ class OrderController(DataController):
                             continue_while = True
                         else:
                             print('[DONE] Finished getting orders because it reached the maxRuns.')
-                            self.utils.set_end_time(time.time())
+                            self.utils.set_end_time(self.utils.get_current_date_time())
                             continue_while = False
                     else:
                         print("[DONE] No orders found.")
-                        self.utils.set_end_time(time.time())
+                        self.utils.set_end_time(self.utils.get_current_date_time())
                         continue_while = False
                 else:
                     print("[DONE] No orders found.")
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     continue_while = False
             except Exception as e:
                 print(f"[ERROR] Error while getting all orders line items. Error: {str(e)}")
@@ -1519,7 +2000,7 @@ class OrderController(DataController):
                     continue_while = True
                 else:
                     print('[DONE] Finished getting orders because it reached the maxRuns.')
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     continue_while = False
             finally:
                 print("[INFO] Clearing variables...")
@@ -1566,7 +2047,7 @@ class OrderController(DataController):
             self.utils.clear_columns_values_arrays()
 
             self.utils.validate_columns_values("APP_ID", order.get_app_id())
-            self.utils.validate_columns_values("BILLING_ADDRESS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_billing_address())))
+            # self.utils.validate_columns_values("BILLING_ADDRESS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_billing_address())))
             self.utils.validate_columns_values("BROWSER_IP", order.get_browser_ip())
             self.utils.validate_columns_values("BUYER_ACCEPTS_MARKETING", order.get_buyer_accepts_marketing())
             self.utils.validate_columns_values("CANCEL_REASON", self.utils.replace_special_chars(order.get_cancel_reason()))
@@ -1585,8 +2066,8 @@ class OrderController(DataController):
             self.utils.validate_columns_values("CUSTOMER_ID", order.get_customer_id())
             self.utils.validate_columns_values("CUSTOMER", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_customer())))
             self.utils.validate_columns_values("CUSTOMER_LOCALE", order.get_customer_locale())
-            self.utils.validate_columns_values("DISCOUNT_APPLICATIONS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_discount_applications())))
-            self.utils.validate_columns_values("DISCOUNT_CODES", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_discount_codes())))
+            # self.utils.validate_columns_values("DISCOUNT_APPLICATIONS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_discount_applications())))
+            # self.utils.validate_columns_values("DISCOUNT_CODES", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_discount_codes())))
             self.utils.validate_columns_values("EMAIL", self.utils.replace_special_chars(order.get_email()))
             self.utils.validate_columns_values("ESTIMATED_TAXES", order.get_estimated_taxes())
             self.utils.validate_columns_values("FINANCIAL_STATUS", order.get_financial_status())
@@ -1594,7 +2075,7 @@ class OrderController(DataController):
             self.utils.validate_columns_values("FULFILLMENT_STATUS", order.get_fulfillment_status())
             self.utils.validate_columns_values("ID", order.get_id())
             self.utils.validate_columns_values("LANDING_SITE", self.utils.replace_special_chars(order.get_landing_site()))
-            self.utils.validate_columns_values("LINE_ITEMS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_line_items())))
+            # self.utils.validate_columns_values("LINE_ITEMS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_line_items())))
             self.utils.validate_columns_values("LOCATION_ID", order.get_location_id())
             self.utils.validate_columns_values("MERCHANT_OF_RECORD_APP_ID", order.get_merchant_of_record_app_id())
             self.utils.validate_columns_values("NAME", self.utils.replace_special_chars(order.get_name()))
@@ -1611,8 +2092,8 @@ class OrderController(DataController):
             self.utils.validate_columns_values("PRESENTMENT_CURRENCY", order.get_presentment_currency())
             self.utils.validate_columns_values("PROCESSED_AT", order.get_processed_at())
             self.utils.validate_columns_values("REFERRING_SITE", self.utils.replace_special_chars(order.get_referring_site()))
-            self.utils.validate_columns_values("REFUNDS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_refunds())))
-            self.utils.validate_columns_values("SHIPPING_ADDRESS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_shipping_address(), ensure_ascii=False)))
+            # self.utils.validate_columns_values("REFUNDS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_refunds())))
+            # self.utils.validate_columns_values("SHIPPING_ADDRESS", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_shipping_address(), ensure_ascii=False)))
             self.utils.validate_columns_values("SHIPPING_LINES", self.utils.replace_special_chars(self.utils.convert_object_to_json(order.get_shipping_lines())))
             self.utils.validate_columns_values("SOURCE_NAME", self.utils.replace_special_chars(order.get_source_name()))
             self.utils.validate_columns_values("SOURCE_IDENTIFIER", order.get_source_identifier())
@@ -1721,15 +2202,7 @@ class OrderController(DataController):
             self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="upsert_orders", error_code=500, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(2))
         finally:
             try:
-                del maximum_insert_try
-                del keep_trying
-                del count_try
-                del order_id
-                del columns
-                del rows
-                del result_query
-                del error_message
-                del additional_details
+                del maximum_insert_try, keep_trying, count_try, order_id, columns, rows, result_query, error_message, additional_details
             except Exception as e:
                 print(f"[INFO] Variable not found: {e}")
                 pass
@@ -1898,6 +2371,113 @@ class OrderController(DataController):
                 pass
             return False, 0, 0, "order_id is None or empty."
 
+    def insert_custom_orders_managemet(self, order:CustomOrdersManagement):
+        order_upserted_flag = False # Upsert means: Inserted or Updated
+        maximum_insert_try = 100
+        keep_trying = True
+        count_try = 0
+        order_inserted_count = 0
+        order_id = None
+        columns = None
+        rows = None
+        result_query = None
+        result_string = None
+        error_message = None
+        additional_details = None
+        sorority_flg = False
+        sent_by_vendor_flg = False
+        received_flg = False
+        fulfilled_flg = False
+
+        try:
+            order_id = order.get_id()
+            sorority_flg = False if order.get_sorority_flg() is None or order.get_sorority_flg() == "" else order.get_sorority_flg()
+            sent_by_vendor_flg = False if order.get_sent_by_vendor_flg() is None or order.get_sent_by_vendor_flg() == "" else order.get_sent_by_vendor_flg()
+            received_flg = False if order.get_received_flg() is None or order.get_received_flg() == "" else order.get_received_flg()
+            fulfilled_flg = False if order.get_fulfilled_flg() is None or order.get_fulfilled_flg() == "" else order.get_fulfilled_flg()
+
+            self.utils.clear_columns_values_arrays()
+            self.utils.validate_columns_values("ORDER_PROCESSING_ID", order.get_order_processing_id())
+            self.utils.validate_columns_values("ID", order_id)
+            self.utils.validate_columns_values("NAME", order.get_name())
+            self.utils.validate_columns_values("COUNTRY", order.get_country())
+            self.utils.validate_columns_values("COUNTRY_CODE", order.get_country_code())
+            self.utils.validate_columns_values("LOCATION_ID", order.get_location_id())
+            self.utils.validate_columns_values("LOCATION_NAME", order.get_location_name())
+            self.utils.validate_columns_values("CREATED_AT", order.get_created_at())
+            self.utils.validate_columns_values("FONT", order.get_font())
+            self.utils.validate_columns_values("CUSTOM_TEXT", self.utils.replace_special_chars(order.get_custom_text()))
+            self.utils.validate_columns_values("PROD_NAME", self.utils.replace_special_chars(order.get_prod_name()))
+            self.utils.validate_columns_values("PROD_SKU", order.get_prod_sku())
+            self.utils.validate_columns_values("QUANTITY", order.get_quantity())
+            self.utils.validate_columns_values("VENDOR_ID", order.get_vendor_id())
+            self.utils.validate_columns_values("VENDOR_NAME", self.utils.replace_special_chars(order.get_vendor_name()))
+            self.utils.validate_columns_values("SENT_TO_VENDOR_DATE", order.get_sent_to_vendor_date())
+            self.utils.validate_columns_values("SORORITY_FLG", sorority_flg)
+            self.utils.validate_columns_values("SENT_BY_VENDOR_FLG", sent_by_vendor_flg)
+            self.utils.validate_columns_values("SHIPPED_DATE", order.get_shipped_date())
+            self.utils.validate_columns_values("TRACKING_NUMBER", order.get_tracking_number())
+            self.utils.validate_columns_values("TRACKING_URL", order.get_tracking_url())
+            self.utils.validate_columns_values("RECEIVED_FLG", received_flg)
+            self.utils.validate_columns_values("RECEIVED_DATE", order.get_received_date())
+            self.utils.validate_columns_values("RECEIVED_BY", order.get_received_by())
+            self.utils.validate_columns_values("RECEIVED_NOTES", order.get_received_notes())
+            self.utils.validate_columns_values("FULFILLED_FLG", fulfilled_flg)
+            self.utils.validate_columns_values("FULFILLED_DATE", order.get_fulfilled_date())
+            self.utils.validate_columns_values("FULFILLMENT_STATUS", "NULL")
+            self.utils.validate_columns_values("CANCELLED_FLG", "FALSE")
+            self.utils.validate_columns_values("VENDOR_PROCESSING_TIME", order.get_vendor_processing_time())
+            self.utils.validate_columns_values("VENDOR_PROCESSING_TIME_UNIT", order.get_vendor_processing_time_unit())
+            self.utils.validate_columns_values("TOTAL_SHIPPING_TIME", order.get_total_shipping_time())
+            self.utils.validate_columns_values("TOTAL_SHIPPING_TIME_UNIT", order.get_total_shipping_time_unit())
+            self.utils.validate_columns_values("TOTAL_PROCESSING_TIME", order.get_total_processing_time())
+            self.utils.validate_columns_values("TOTAL_PROCESSING_TIME_UNIT", order.get_total_processing_time_unit())
+
+            order_upserted_flag, order_inserted_count, result_string = super().insert_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), self.utils.get_columns_array(), self.utils.get_values_array())
+
+            if order_upserted_flag == False and ("1062" in result_string or "Duplicate entry" in result_string):
+                if "PRIMARY" in result_string:
+                    while keep_trying:
+                        count_try += 1
+                        print(f"[INFO] Trying to insert order again...\t\tOrder: {order_id}.Try: {count_try}")
+                        super().generate_next_id()
+                        order_upserted_flag, order_inserted_count, result_string = super().insert_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), self.utils.get_columns_array(), self.utils.get_values_array())
+
+                        if order_upserted_flag == True:
+                            print(f"[INFO] Order Inserted...\t\t\tOrder: {order_id}")
+                            keep_trying = False
+                        else:
+                            if count_try >= maximum_insert_try:
+                                print(f"[INFO] Order NOT Inserted/Maximum tries...\tOrder: {order_id}.Try: {count_try}")
+                                keep_trying = False
+
+            return order_upserted_flag, order_inserted_count, result_string
+        except Exception as e:
+            error_message = f"[ERROR] Error while upserting order. Order id: {order_id} - Error: {str(e)}."
+            additional_details = result_string
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="insert_custom_orders_managemet", error_code=500, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(2))
+            return False, 0, str(e)
+        finally:
+            # print("[INFO] Clearing variables...")
+            try:
+                del order_upserted_flag
+                del maximum_insert_try
+                del keep_trying
+                del count_try
+                del order_id
+                del columns
+                del rows
+                del result_query
+                del error_message
+                del additional_details
+                del sorority_flg
+                del sent_by_vendor_flg
+                del received_flg
+                del fulfilled_flg
+            except Exception as e:
+                print(f"[INFO] Variable not found: {e}")
+                pass
+
     def delete_order(self, order_id):
         try:
             count_deleted = 0
@@ -1931,6 +2511,7 @@ class OrderController(DataController):
 
     def process_order_and_line_items(self, order_json):
         last_order_id = None
+        order_name = None
         error_message = None
         additional_details = None
         is_order_upserted_success = False
@@ -1938,7 +2519,6 @@ class OrderController(DataController):
         order_inserted_count = 0
         order_updated_count = 0
         response_description = "Success"
-        line_items = None
         items_upserted_count = 0
         items_count = 0
         is_item_upserted_success = False
@@ -1946,6 +2526,49 @@ class OrderController(DataController):
         line_item_updated_count = 0
         last_order_line_item_id = None
         item = None
+        is_custom_order = False
+        found_custom_item = False
+        custom_product_name = None
+        custom_products_array = []
+        order_fulfillment_status = "unfulfilled"
+        line_items = []
+        result_flag = False
+        count_products_updated = 0
+        order_cancelled_at = None
+        refunds = []
+        refunded_items = []
+        result_string = "Success"
+        result_code = None
+        billing_address_json = None
+        shipping_address_json = None
+        discount_codes_json = None
+        discount_applications_json = None
+        fulfillments_json = None
+        refunds_json = None
+        result_flag_billing_address = False
+        return_code_billing_address = None
+        rowcount_billing_address = None
+        result_string_billing_address = None
+        result_flag_shipping_address = False
+        return_code_shipping_address = None
+        rowcount_shipping_address = None
+        result_string_shipping_address = None
+        result_flag_discount_codes = False
+        return_code_discount_codes = None
+        rowcount_discount_codes = None
+        result_string_discount_codes = None
+        result_flag_discount_applications = False
+        return_code_discount_applications = None
+        rowcount_discount_applications = None
+        result_string_discount_applications = None
+        result_flag_fulfillments = False
+        return_code_fulfillments = None
+        rowcount_fulfillments = None
+        result_string_fulfillments = None
+        result_flag_refunds = False
+        return_code_refunds = None
+        rowcount_refunds = None
+        result_string_refunds = None
 
         try:
             order = self.Order()
@@ -1957,7 +2580,8 @@ class OrderController(DataController):
             order.set_browser_ip(order_json.get("browser_ip", ""))
             order.set_buyer_accepts_marketing(order_json.get("buyer_accepts_marketing", ""))
             order.set_cancel_reason(order_json.get("cancel_reason", ""))
-            order.set_cancelled_at(order_json.get("cancelled_at", ""))
+            order_cancelled_at = order_json.get("cancelled_at", "")
+            order.set_cancelled_at(order_cancelled_at)
             order.set_cart_token(order_json.get("cart_token", ""))
             order.set_checkout_id(order_json.get("checkout_id", ""))
             order.set_checkout_token(order_json.get("checkout_token", ""))
@@ -1973,7 +2597,7 @@ class OrderController(DataController):
             except Exception as e:
                 error_message = f"[ERROR] Error while getting country_code from shipping_address. Order id: {order_json.get('id')} - Error: {str(e)}."
                 additional_details = f'[INFO] This error is not critical. The order will be saved without the country_code.'
-                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
                 order.set_country_code("")
             order.set_currency(order_json.get("currency", ""))
             order.set_current_subtotal_price(order_json.get("current_subtotal_price", ""))
@@ -1988,15 +2612,18 @@ class OrderController(DataController):
             order.set_current_total_tax_set(order_json.get("current_total_tax_set", ""))
             order.set_customer_locale(order_json.get("customer_locale", ""))
             order.set_device_id(order_json.get("device_id", ""))
-            order.set_discount_codes(order_json.get("discount_codes", ""))
+            discount_codes_json = order_json.get("discount_codes", [])
+            # order.set_discount_codes(discount_codes_json)
             order.set_email(order_json.get("email", ""))
             order.set_estimated_taxes(order_json.get("estimated_taxes", ""))
             order.set_financial_status(order_json.get("financial_status", ""))
+            order_fulfillment_status = order_json.get("fulfillment_status", "")
             order.set_fulfillment_status(order_json.get("fulfillment_status", ""))
             order.set_landing_site(order_json.get("landing_site", ""))
             order.set_landing_site_ref(order_json.get("landing_site_ref", ""))
             order.set_location_id(order_json.get("location_id", ""))
             order.set_merchant_of_record_app_id(order_json.get("merchant_of_record_app_id", ""))
+            order_name = order_json.get("name", "")
             order.set_name(order_json.get("name", ""))
             order.set_note(order_json.get("note", ""))
             order.set_note_attributes(order_json.get("note_attributes", ""))
@@ -2017,6 +2644,7 @@ class OrderController(DataController):
             order.set_source_url(order_json.get("source_url", ""))
             order.set_subtotal_price(order_json.get("subtotal_price", ""))
             order.set_subtotal_price_set(order_json.get("subtotal_price_set", ""))
+            is_custom_order = True if "custom" in str(order_json.get("tags")).lower() else False
             order.set_tags(order_json.get("tags", ""))
             order.set_tax_exempt(order_json.get("tax_exempt", ""))
             order.set_tax_lines(order_json.get("tax_lines", ""))
@@ -2037,28 +2665,33 @@ class OrderController(DataController):
             order.set_total_weight(order_json.get("total_weight", ""))
             order.set_updated_at(order_json.get("updated_at", ""))
             order.set_user_id(order_json.get("user_id", ""))
-            order.set_billing_address(order_json.get("billing_address", ""))
+            billing_address_json = order_json.get("billing_address", {})
+            # order.set_billing_address(billing_address)
             try:
                 order.set_customer_id(order_json.get("customer", {}).get("id"))
             except Exception as e:
                 error_message = f"[ERROR] Error while getting customer id from order_json. Order id: {order_json.get('id')} - Error: {str(e)}."
                 additional_details = f'[INFO] This error is not critical. The order will be saved without the customer id.'
-                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
                 order.set_customer_id("")
             order.set_customer(order_json.get("customer", {}))
-            order.set_discount_applications(order_json.get("discount_applications", ""))
-            order.set_fulfillments(order_json.get("fulfillments", ""))
+            discount_applications_json = order_json.get("discount_applications", [])
+            # order.set_discount_applications(discount_applications)
+            fulfillments_json = order_json.get("fulfillments", [])
+            # order.set_fulfillments(order_json.get("fulfillments", ""))
             try:
                 line_items = order_json.get("line_items", [])
             except Exception as e:
                 error_message = f"[ERROR] Error while getting line_items from order_json. Order id: {order_json.get('id')} - Error: {str(e)}."
                 additional_details = f'[INFO] This error is not critical. The order will be saved without the line_items.'
-                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
                 line_items = []
             order.set_line_items(line_items)
             order.set_payment_terms(order_json.get("payment_terms", ""))
-            order.set_refunds(order_json.get("refunds", ""))
-            order.set_shipping_address(order_json.get("shipping_address", {}))
+            refunds_json = order_json.get("refunds", [])
+            # order.set_refunds(refunds)
+            shipping_address_json = order_json.get("shipping_address", {})
+            # order.set_shipping_address(shipping_address)
             order.set_shipping_lines(order_json.get("shipping_lines", ""))
 
             is_order_upserted_success, total_order_upserted_count, order_inserted_count, order_updated_count, response_description = self.upsert_orders(order)
@@ -2070,6 +2703,42 @@ class OrderController(DataController):
                     self.print_log(log_level="info", type="order", function="update", order_id=last_order_id, item_id=None, try_count=None, message=None)
                 else:
                     self.print_log(log_level="error", type="order", function="process", order_id=last_order_id, item_id=None, try_count=None, message=None)
+
+                if billing_address_json is not None and billing_address_json != {}:
+                    try:
+                        result_flag_billing_address, return_code_billing_address, rowcount_billing_address, result_string_billing_address = self.billing_address.upsert_billing_address_api(last_order_id, billing_address_json)
+                    except:
+                        pass
+
+                if shipping_address_json is not None and shipping_address_json != {}:
+                    try:
+                        result_flag_shipping_address, return_code_shipping_address, rowcount_shipping_address, result_string_shipping_address = self.shipping_address.upsert_shipping_address_api(last_order_id, shipping_address_json)
+                    except:
+                        pass
+
+                if discount_codes_json is not None and discount_codes_json != []:
+                    try:
+                        result_flag_discount_codes, return_code_discount_codes, rowcount_discount_codes, result_string_discount_codes = self.discount_cds.upsert_discount_code_api(last_order_id, discount_codes_json)
+                    except:
+                        pass
+
+                if discount_applications_json is not None and discount_applications_json != []:
+                    try:
+                        result_flag_discount_applications, return_code_discount_applications, rowcount_discount_applications, result_string_discount_applications = self.discount_apps.upsert_discount_application_api(last_order_id, discount_applications_json)
+                    except:
+                        pass
+
+                if fulfillments_json is not None and fulfillments_json != []:
+                    try:
+                        result_flag_fulfillments, return_code_fulfillments, rowcount_fulfillments, result_string_fulfillments = self.fulfill.upsert_order_fulfillment_api(fulfillments_json)
+                    except:
+                        pass
+
+                if refunds_json is not None and refunds_json != []:
+                    try:
+                        result_flag_refunds, return_code_refunds, rowcount_refunds, result_string_refunds = self.refunds.upsert_refund_api(refunds_json)
+                    except:
+                        pass
 
                 if line_items is not None and line_items != []:
                     items_upserted_count = 0
@@ -2096,6 +2765,10 @@ class OrderController(DataController):
                         line_item.set_variant_inventory_management(item.get("variant_inventory_management", ""))
                         line_item.set_variant_title(item.get("variant_title", ""))
                         line_item.set_vendor(item.get("vendor", ""))
+                        if "custom" in item.get("name").lower():
+                            custom_product_name = item.get("name")
+                            custom_products_array.append(custom_product_name)
+                            found_custom_item = True
                         line_item.set_name(item.get("name", ""))
                         line_item.set_gift_card(item.get("gift_card", ""))
                         line_item.set_properties(item.get("properties", ""))
@@ -2120,46 +2793,321 @@ class OrderController(DataController):
                         else:
                             error_message = f"[ERROR] Error while processing line item: {response_description}"
                             additional_details = f'[INFO] Line Item JSON: {item}'
-                            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
                 else:
                     error_message = f"[ERROR] No line items found for order: {last_order_id}"
                     additional_details = f'[INFO] Order JSON: {order_json}'
-                    self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                    self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
             else:
                 error_message = f"[ERROR] Error while processing order: {response_description}"
                 additional_details = f'[INFO] Order JSON: {order_json}'
-                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
 
             print(f"[INFO] {items_upserted_count} of {items_count} item(s) was/were upserted...\tOrder: {last_order_id}")
+
+            if is_custom_order and found_custom_item:
+                print(f"[INFO] Order has custom items...\t\tOrder: {last_order_id}")
+                if order_fulfillment_status == "fulfilled" or order_fulfillment_status == "partial":
+                    print(f"[INFO] Order has items to fulfill...\t\tOrder: {last_order_id}")
+                    try:
+                        for product in custom_products_array:
+                            print(f"[INFO] Updating Custom Fulfillment...\t\tOrder: {last_order_id}\tProd: {product.replace('Custom/Personalized ', '')}")
+                            result_code, result_flag, count_products_updated, result_string = self.update_customs_fulfillment_status(order_id=last_order_id, fulfillments=fulfillments_json, product_name=product)
+                            if result_flag:
+                                if count_products_updated > 0:
+                                    print(f"[INFO] Custom fulfillment status updated...\tOrder: {last_order_id}\tProd: {product.replace('Custom/Personalized ', '')}")
+                                else:
+                                    print(f"[INFO] Custom not fulfilled yet...\t\tOrder: {last_order_id}\tProd: {product.replace('Custom/Personalized ', '')}")
+                            else:
+                                if result_string is not None and result_string != "Success":
+                                    print(f"[ERROR] Error while updating customs fulfillment status: {result_string}")
+                                    error_message = f"[ERROR] Error while updating customs fulfillment status: {result_string}"
+                                    additional_details = f'[INFO] Order JSON: {order_json}'
+                                    self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                                    pass
+                        print(f"[INFO] Finished updating customs fulfillment...\tOrder: {last_order_id}")
+                    except Exception as e:
+                        print(f"[ERROR] Error while updating customs fulfillment status: {e}")
+                        error_message = f"[ERROR] Error while updating customs fulfillment status: {e}"
+                        additional_details = f'[INFO] Order JSON: {order_json}'
+                        self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                        pass
+
+                if order_cancelled_at is not None and order_cancelled_at != "":
+                    print(f"[INFO] Order cancelled... Cancelling customs...\tOrder: {last_order_id}")
+                    try:
+                        result_code, result_flag, rowcount, result_string = self.cancel_or_refund_custom_item(order_id=last_order_id, product_name=None, cancel_reason="cancelled")
+                        if result_flag:
+                            if rowcount > 0:
+                                print(f"[INFO] Custom cancelled...\t\t\tOrder: {last_order_id}")
+                        else:
+                            if result_string is not None and result_string != "Success":
+                                print(f"[ERROR] Error while updating customs cancel: {result_string}")
+                                error_message = f"[ERROR] Error while updating customs cancel: {result_string}"
+                                additional_details = f'[INFO] Order JSON: {order_json}'
+                                self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                                pass
+                    except Exception as e:
+                        print(f"[ERROR] Error while processing custom cancel: {e}")
+                        error_message = f"[ERROR] Error while processing custom cancel: {e}"
+                        additional_details = f'[INFO] Order JSON: {order_json}'
+                        self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                        pass
+                else:
+                    if refunds is not None and refunds != []:
+                        print(f"[INFO] Order has items to refund...\t\tOrder: {last_order_id}")
+                        try:
+                            for product in custom_products_array:
+                                result_code, result_flag, rowcount, result_string = self.verify_if_has_custom_item_to_refund(order_id=last_order_id, refunds=refunds, product_name=product)
+
+                                if result_flag:
+                                    if rowcount > 0:
+                                        print(f"[INFO] Custom refunded...\t\t\tOrder: {last_order_id}\tProd: {product.replace('Custom/Personalized ', '')}")
+                                else:
+                                    if result_string is not None and result_string != "Success":
+                                        print(f"[ERROR] Error while updating refund of custom item {product}: {result_string}")
+                                        error_message = f"[ERROR] Error while updating customs refund: {result_string}"
+                                        additional_details = f'[INFO] Order JSON: {order_json}'
+                                        self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                                        pass
+                            print(f"[INFO] Finished refunding Customs...\tOrder: {last_order_id}")
+                        except Exception as e:
+                            print(f"[ERROR] Error while processing refunds: {e}")
+                            error_message = f"[ERROR] Error while processing refunds: {e}"
+                            additional_details = f'[INFO] Order JSON: {order_json}'
+                            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+                            pass
 
             return is_order_upserted_success, is_item_upserted_success, total_order_upserted_count, items_upserted_count, last_order_id
         except Exception as e:
             print(f"[ERROR] Error while processing order: {e}")
             error_message = f"[ERROR] Error while processing order: {e}"
             additional_details = f'[INFO] Order JSON: {order_json}'
-            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_orders_from_staging_table", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_order_and_line_items", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(6))
             return is_order_upserted_success, is_item_upserted_success, total_order_upserted_count, items_upserted_count, last_order_id
         finally:
-            print(f"Cleaning up variables...")
+            # print(f"\n[INFO] Cleaning up variables...")
             try:
-                del last_order_id
-                del error_message
-                del additional_details
-                del is_order_upserted_success
-                del total_order_upserted_count
-                del order_inserted_count
-                del order_updated_count
-                del response_description
-                del line_items
-                del items_upserted_count
-                del items_count
-                del is_item_upserted_success
-                del line_item_inserted_count
-                del line_item_updated_count
-                del last_order_line_item_id
-                del item
+                del last_order_id, order_name, error_message, additional_details, is_order_upserted_success, total_order_upserted_count, order_inserted_count, order_updated_count, response_description, items_upserted_count, items_count, is_item_upserted_success, line_item_inserted_count, line_item_updated_count, last_order_line_item_id, item, is_custom_order, found_custom_item, custom_product_name, custom_products_array, order_fulfillment_status, line_items, result_flag, count_products_updated, order_cancelled_at, refunds, refunded_items, result_string, result_code, billing_address_json, shipping_address_json, discount_codes_json, discount_applications_json, fulfillments_json, refunds_json, result_flag_billing_address, return_code_billing_address, rowcount_billing_address, result_string_billing_address, result_flag_shipping_address, return_code_shipping_address, rowcount_shipping_address, result_string_shipping_address, result_flag_discount_codes, return_code_discount_codes, rowcount_discount_codes, result_string_discount_codes, result_flag_discount_applications, return_code_discount_applications, rowcount_discount_applications, result_string_discount_applications, result_flag_fulfillments, return_code_fulfillments, rowcount_fulfillments, result_string_fulfillments, result_flag_refunds, return_code_refunds, rowcount_refunds, result_string_refunds
             except Exception as e:
                 print(f"[INFO] Variable not found: {e}")
+                pass
+
+    def update_customs_fulfillment_status(self, order_id, fulfillments, product_name):
+        item_fulfilled_flag = False
+        item_fulfillment_status = "unfulfilled"
+        fulfillment_created_at = None
+        condition = None
+        item = None
+        result_flag = False
+        rowcount = 0
+        result_string = "Success"
+        count_products_updated = 0
+        product_replace = product_name.replace("null", "None")
+        item_name = None
+        item_name_replace = None
+        columns = ["COUNT(*) AS TOTAL"]
+        condition = "1=1"
+        condition += f"\nAND ID = '{order_id}'"
+        condition += f"\nAND PROD_NAME = '{self.utils.replace_special_chars(product_replace)}'"
+        item_found = False
+        fulfillment_status = None
+        fulfillment_cancelled = False
+        order_name = None
+
+        try:
+            print(f"[INFO] Verifying Customs Management Table...\tOrder: {order_id} Prod: {product_replace.replace('Custom/Personalized ', '')}")
+            result_flag, result_query = super().query_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), columns, condition)
+
+            if result_flag:
+                print(f"[INFO] Custom found...\t\t\t\tOrder: {order_id}")
+                if result_query[0].get("TOTAL") > 0:
+                    print(f"[INFO] Verifying if it is fulfilled...\t\tOrder: {order_id}")
+                    if len(fulfillments) > 0:
+                        print(f"[INFO] Found {len(fulfillments)} fulfillments...\t\t\tOrder: {order_id}")
+                        print(f"[INFO] Sorting fulfillments by created_at...\tOrder: {order_id}")
+                        fulfillments = sorted(fulfillments, key=lambda x: x.get('created_at'))
+                        for fulfill in fulfillments:
+                            order_name = fulfill.get('name')
+                            fulfillment_status = fulfill.get('status')
+                            fulfillment_created_at = fulfill.get('created_at').split('T')[0] + ' ' + fulfill.get('created_at').split('T')[1].split('-')[0]
+                            line_items = fulfill.get('line_items')
+                            print(f"\n[INFO] {order_name} fulfillment is {str(fulfillment_status)} on {fulfillment_created_at}...")
+                            if fulfillment_status == "success" or fulfillment_status == "cancelled":
+                                fulfillment_cancelled = True if fulfillment_status == "cancelled" else False
+                                print(f"[INFO] Searching for the Custom...\t\tOrder: {order_id} Prod: {product_replace.replace('Custom/Personalized ', '')}")
+                                if len(line_items) > 0:
+                                    for item in line_items:
+                                        item_name = item.get('name')
+                                        item_name_replace = item_name.replace("null", "None")
+                                        print(f"[INFO] Item: {item_name_replace}")
+                                        if item_name_replace == product_replace:
+                                            print(f"[INFO] Custom found in the Fulfillments...\tOrder: {order_id}")
+                                            item_found = True
+                                            item_fulfillment_status = item.get('fulfillment_status')
+                                            if item_fulfillment_status == "fulfilled":
+                                                item_fulfilled_flag = True
+                                                print(f"[INFO] Custom is fulfilled...\t\t\tOrder: {order_id}")
+                                                if fulfillment_cancelled:
+                                                    item_fulfilled_flag = False
+                                                    print(f"[INFO] Fulfillment is cancelled...\t\tOrder: {order_id}")
+                                                    print(f"[INFO] Cancelling custom Fulfillment...\t\tOrder: {order_id}")
+                                            else:
+                                                item_fulfilled_flag = False
+                                                print(f"[INFO] Custom not fulfilled... Ignoring...\tOrder: {order_id}")
+                                            break
+                                        else:
+                                            print(f"[INFO] Item doesn't match...\t\t\tOrder: {order_id}")
+                                            print(f"[INFO] Checking next item...\t\t\tOrder: {order_id}")
+                                    print(f"[INFO] Finished checking items...\t\tOrder: {order_id}")
+                                    print(f"[INFO] Checking if it has more fulfillments...\tOrder: {order_id}")
+                                else:
+                                    print(f"[INFO] No line items found in the fulfillment...\tOrder: {order_id}")
+                                    print(f"[INFO] Checking if it has more fulfillments...\tOrder: {order_id}")
+                            else:
+                                print(f"[INFO] Checking if it has more fulfillments...\tOrder: {order_id}")
+                        print(f"[INFO] Finished checking fulfillments...\tOrder: {order_id}")
+                        if not item_found:
+                            item_fulfilled_flag = False
+                            print(f"[INFO] Custom not found in the Fulfillments...\tOrder: {order_id}")
+                    else:
+                        item_found = False
+                        item_fulfilled_flag = False
+                        print(f"[INFO] No fulfillments found for the order...\tOrder: {order_id}")
+                else:
+                    print(f"[INFO] Custom not found in the Customs Management table...\tOrder: {order_id}")
+                    return 404, result_flag, 0, "Custom not found in the Customs Management table."
+            else:
+                print(f"[INFO] Custom not found in the Customs Management table...\tOrder: {order_id}")
+                return 404, result_flag, 0, "Custom not found in the Customs Management table."
+
+            print(f"\n[INFO] Updating Custom Fulfillment...\t\tOrder: {order_id}")
+            # print(f"[INFO] FULFILLED_FLG: {"TRUE" if item_fulfilled_flag and not fulfillment_cancelled else "FALSE"}...")
+            # print(f"[INFO] FULFILLMENT_STATUS: {item_fulfillment_status if item_fulfilled_flag and not fulfillment_cancelled else "NULL"}...")
+            # print(f"[INFO] FULFILLED_DATE: {f"DATE_FORMAT('{fulfillment_created_at}', '%Y-%m-%d %H:%i:%s')" if item_fulfilled_flag and not fulfillment_cancelled else "NULL"}...")
+            self.utils.clear_columns_values_arrays()
+            # self.utils.validate_columns_values("RECEIVED_FLG", "TRUE")
+            # self.utils.validate_columns_values("RECEIVED_DATE", f"DATE_FORMAT('{fulfillment_created_at}', '%Y-%m-%d %H:%i:%s')")
+            self.utils.validate_columns_values("FULFILLED_FLG", "TRUE" if item_fulfilled_flag and not fulfillment_cancelled else "FALSE")
+            self.utils.validate_columns_values("FULFILLMENT_STATUS", item_fulfillment_status if item_fulfilled_flag and not fulfillment_cancelled else "NULL")
+            self.utils.validate_columns_values("FULFILLED_DATE", f"DATE_FORMAT('{fulfillment_created_at}', '%Y-%m-%d %H:%i:%s')" if item_fulfilled_flag and not fulfillment_cancelled else "NULL")
+            self.utils.validate_columns_values("TOTAL_PROCESSING_TIME", "DATEDIFF(FULFILLED_DATE, CREATED_AT)" if item_fulfilled_flag and not fulfillment_cancelled else "0")
+            self.utils.validate_columns_values("TOTAL_PROCESSING_TIME_UNIT", "days")
+            condition = "1=1"
+            condition += f"\nAND ID = '{order_id}'"
+            condition += f"\nAND PROD_NAME = '{self.utils.replace_special_chars(product_replace)}'"
+
+            result_flag, rowcount, result_string = super().update_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), self.utils.get_columns_array(), self.utils.get_values_array(), condition)
+
+            if result_flag:
+                print(f"[INFO] Custom Fulfillment Updated...\t\tOrder: {order_id}\tProd: {product_replace.replace('Custom/Personalized ', '')}")
+                count_products_updated += rowcount
+                return 200, result_flag, count_products_updated, result_string
+            else:
+                if result_string is not None and result_string != "Success":
+                    print(f"[ERROR] Error while updating custom fulfillment.\t\tOrder: {order_id} - Error: {result_string}")
+                    return 404, result_flag, 0, result_string
+                else:
+                    return 400, result_flag, 0, result_string
+        except Exception as e:
+            print(f"[ERROR] Error while updating custom fulfillment: {e}")
+            return False, 0, str(e)
+        finally:
+            try:
+                del item_fulfilled_flag, item_fulfillment_status, fulfillment_created_at, condition, item, result_flag, rowcount, result_string, count_products_updated, product_replace, item_name, item_name_replace, columns, condition, item_found, fulfillment_status, fulfillment_cancelled
+            except Exception as e:
+                pass
+
+    def verify_if_has_custom_item_to_refund(self, order_id, refunds, product_name):
+        refund = None
+        refund_items = None
+        item_info = None
+        item_name = None
+        item_name_replace = None
+        fulfillment_status = None
+        line_item = None
+        result_code = None
+        result_flag = False
+        rowcount = 0
+        result_string = "Success"
+
+        try:
+            print(f"[INFO] Verifying if has custom to refund...\tOrder: {order_id} Prod: {product_name.replace('Custom/Personalized ', '')}")
+            for refund in refunds:
+                refund_items = refund.get("refund_line_items")
+                for item_info in refund_items:
+                    line_item = item_info.get("line_item")
+                    item_name = line_item.get("name")
+                    item_name_replace = item_name.replace("null", "None")
+                    fulfillment_status = line_item.get("fulfillment_status")
+                    if item_name_replace == product_name:
+                        print(f"[INFO] Custom found in the refunds...\t\tOrder: {order_id} Prod: {product_name.replace('Custom/Personalized ', '')}")
+                        result_code, result_flag, rowcount, result_string = self.cancel_or_refund_custom_item(order_id=order_id, product_name=product_name, cancel_reason="refunded")
+                        return result_code, result_flag, rowcount, result_string
+
+            return 404, result_flag, 0, "Custom not found in the refunds."
+        except Exception as e:
+            print(f"[ERROR] Error while verifying if has custom item to refund: {e}")
+            return 500, False, 0, str(e)
+        finally:
+            try:
+                del refund, refund_items, item_info, item_name, item_name_replace, fulfillment_status, line_item, result_code, result_flag, rowcount, result_string
+            except Exception as e:
+                pass
+
+    def cancel_or_refund_custom_item(self, order_id, product_name, cancel_reason):
+        product_replace = None
+        if product_name is not None and product_name != "":
+            product_replace = self.utils.replace_special_chars(product_name.replace("null", "None"))
+        result_flag = False
+        rowcount = 0
+        result_string = "Success"
+        columns = ["COUNT(*) AS TOTAL"]
+        condition = "1=1"
+        condition += f"\nAND ID = '{order_id}'"
+        condition += f"\nAND PROD_NAME = '{product_replace}'" if product_replace is not None and product_replace != "" else ""
+
+        try:
+            print(f"[INFO] Verifying Customs Management table...\tOrder: {order_id} {("Prod: " + product_replace.replace('Custom/Personalized ', '')) if product_replace is not None and product_replace != "" else ""}")
+            result_flag, result_query = super().query_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), columns, condition)
+
+            if result_flag:
+                if result_query[0].get("TOTAL") > 0:
+                    self.utils.clear_columns_values_arrays()
+                    self.utils.validate_columns_values("FULFILLED_FLG", "FALSE")
+                    self.utils.validate_columns_values("FULFILLMENT_STATUS", cancel_reason)
+                    self.utils.validate_columns_values("FULFILLED_DATE", "NULL")
+                    self.utils.validate_columns_values("CANCELLED_FLG", "TRUE")
+                    self.utils.validate_columns_values("VENDOR_PROCESSING_TIME", "0")
+                    self.utils.validate_columns_values("TOTAL_SHIPPING_TIME", "0")
+                    self.utils.validate_columns_values("TOTAL_PROCESSING_TIME", "0")
+                    self.utils.validate_columns_values("VENDOR_PROCESSING_TIME_UNIT", "days")
+                    self.utils.validate_columns_values("TOTAL_SHIPPING_TIME_UNIT", "days")
+                    self.utils.validate_columns_values("TOTAL_PROCESSING_TIME_UNIT", "days")
+
+                    print(f"[INFO] Cancelling Custom...\t\t\tOrder: {order_id} {("Prod: " + product_replace.replace('Custom/Personalized ', '')) if product_replace is not None and product_replace != "" else ""}")
+                    result_flag, rowcount, result_string = super().update_record(super().get_tbl_CUSTOM_ORDERS_MANAGEMENT(), self.utils.get_columns_array(), self.utils.get_values_array(), condition)
+
+                    if result_flag:
+                        print(f"[INFO] Custom Cancelled...\t\t\tOrder: {order_id} {("Prod: " + product_replace.replace('Custom/Personalized ', '')) if product_replace is not None and product_replace != "" else ""}")
+                        return 200, result_flag, rowcount, result_string
+                    else:
+                        if result_string is not None and result_string != "Success":
+                            print(f"[ERROR] Error while cancelling custom.\tOrder: Error: {result_string}")
+                        return 404, result_flag, 0, result_string
+                else:
+                    print(f"[INFO] Custom not found...\t\t\tOrder: {order_id} {("Prod: " + product_replace.replace('Custom/Personalized ', '')) if product_replace is not None and product_replace != "" else ""}")
+                    return 404, result_flag, 0, "Custom not found in the Customs Management table."
+            else:
+                print(f"[INFO] Custom not found in the Customs Management table...\tOrder: {order_id}")
+                return 404, result_flag, 0, "Custom not found in the Customs Management table."
+        except Exception as e:
+            print(f"[ERROR] Error while cancelling custom: {e}")
+            return 500, False, 0, str(e)
+        finally:
+            try:
+                del product_replace, result_flag, rowcount, result_string, columns, condition
+            except Exception as e:
                 pass
 
     # Function to get all orders from shopify and save into the database - Starting Function
@@ -2186,7 +3134,7 @@ class OrderController(DataController):
             additional_info = None
 
             if runCounter <= 1:
-                self.utils.set_start_time(time.time())
+                self.utils.set_start_time(self.utils.get_current_date_time())
             if maxRuns == None or maxRuns == "" or maxRuns == "0":
                 print('[DONE] Finished getting orders because maxRuns is None.')
                 continue_flag = False
@@ -2205,7 +3153,7 @@ class OrderController(DataController):
                 if len(orders) == 0:
                     del orders
                     print('[DONE] Finished getting orders because it found 0.')
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     self.execution_summary(is_webhook=False, send_email=True)
                     continue_flag = False
                 else:
@@ -2221,11 +3169,11 @@ class OrderController(DataController):
                         # return self.get_all_shopify_orders(runCounter=runCounter, maxRuns=maxRuns, fields=fields, limit=limit, status=status, created_at_min=created_at_min, created_at_max=created_at_max, processed_at_min=processed_at_min, processed_at_max=processed_at_max, since_id=last_order_id, fulfillment_status=fulfillment_status, api_version=api_version)
                     else:
                         print('[DONE] Finished getting orders because it reached the maxRuns.')
-                        self.utils.set_end_time(time.time())
+                        self.utils.set_end_time(self.utils.get_current_date_time())
                         self.execution_summary(is_webhook=False, send_email=True)
                         continue_flag = False
             except Exception as e:
-                self.utils.set_end_time(time.time())
+                self.utils.set_end_time(self.utils.get_current_date_time())
 
                 last_order_id = last_order_id if last_order_id is not None else since_id
                 additional_info = f'[INFO] runCounter: {runCounter}'
@@ -2251,7 +3199,7 @@ class OrderController(DataController):
                     # return self.get_all_shopify_orders(runCounter=runCounter, maxRuns=maxRuns, fields=fields, limit=limit, status=status, created_at_min=created_at_min, created_at_max=created_at_max, processed_at_min=processed_at_min, processed_at_max=processed_at_max, since_id=last_order_id, fulfillment_status=fulfillment_status, api_version=api_version)
                 else:
                     print('[DONE] Finished getting orders because it reached the maxRuns.')
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     self.execution_summary(is_webhook=False, send_email=True)
                     continue_flag = False
             finally:
@@ -2335,6 +3283,553 @@ class OrderController(DataController):
                 print(f"[INFO] Variable not found: {e}")
                 pass
 
+    # Function to get all orders with phone cases from shopify and save into the database
+    def get_all_valid_orders_with_phone_cases(self, phone_case_ids, since_id, limit, country_code):
+        print(f"\n[INFO] Getting all valid orders with phone cases...")
+
+        print("[INFO] Instantiating Variables...")
+        # Variables
+        phone_cases_orders = []
+        found_phone_cases = False
+        count_orders = 0
+        count_items = 0
+        orders_length = 0
+        items_length = 0
+        i = 0
+        order_result_query = None
+        item_result_query = None
+        items_ids_condition = ""
+        first_order_id = None
+        last_order_id = None
+        order_result_flag = None
+        item_result_flag = None
+        result_flag_shipping_address = False
+        result_query_shipping_address = None
+        shipp_address = None
+
+        # Query Variables
+        order_columns = ["ID", "NAME", "CREATED", "CREATED_AT", "EMAIL", "TAGS", "COUNTRY_CODE", "CONCAT(JSON_UNQUOTE(JSON_EXTRACT(CUSTOMER, '$.first_name')), \" \", JSON_UNQUOTE(JSON_EXTRACT(CUSTOMER, '$.last_name'))) AS CUSTOMER", "SHIPPING_ADDRESS", "SHIPPING_LABEL_URL"]
+        line_item_columns = ["ID", "ORDER_ID", "PRODUCT_ID", "NAME", "TITLE", "SKU", "VARIANT_ID", "VARIANT_TITLE", "FULFILLABLE_QUANTITY"]
+
+        order_condition = "1=1"
+        order_condition += f"\nAND ID > '{since_id}'" if since_id is not None and since_id != "" else ""
+        # order_condition += f"\nAND NAME IN ('#A2852559')"
+        order_condition += f"\nAND CLOSED_AT IS NULL"
+        order_condition += f"\nAND CANCELLED_AT IS NULL"
+        if country_code is not None and country_code != "":
+            if country_code == 'US':
+                order_condition += f"\nAND COUNTRY_CODE = 'US'"
+                order_condition += f"\nAND PROCESSED_DATE IS NOT NULL"
+                order_condition += f"\nAND FULFILLED_DATE IS NULL"
+                order_condition += f"\nAND SHIPPING_LABEL_URL IS NOT NULL"
+                order_condition += f"\nAND TRACKING_INFO IS NOT NULL"
+            # else:
+            #     order_condition += f"\nAND COUNTRY_CODE = '{country_code}'" if country_code is not None and country_code != "" else ""
+        order_condition += f"\nAND PRINTED_DATE IS NULL"
+        order_condition += f"\nAND (FULFILLMENT_STATUS IS NULL OR FULFILLMENT_STATUS = 'partial')"
+        order_condition += f"\nAND (TAGS LIKE '%XXXXXXXXXX%' AND (TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%'{ " AND TAGS NOT LIKE '%XXXXXXXXXX%' AND TAGS NOT LIKE '%XXXXXXXXXX%'" if country_code == 'US' else "" }))"
+        order_condition += f"\nAND CREATED <= DATE_SUB(NOW(), INTERVAL 120 MINUTE)"
+        order_condition += f"\nORDER BY CREATED_AT ASC"
+        order_condition += f"\nLIMIT {limit}" if limit is not None and limit != "" and limit != "0" else ""
+
+        if len(phone_case_ids) > 0:
+            items_ids_condition += f"\nAND PRODUCT_ID IN ("
+            for case_id in phone_case_ids:
+                if i == 0:
+                    items_ids_condition += f"\n\t'{case_id}'"
+                else:
+                    items_ids_condition += f",\n\t'{case_id}'"
+                i += 1
+            items_ids_condition += f"\n)"
+
+        try:
+            print(f"[INFO] Querying for orders with Phone Cases... Limit: {limit}")
+            # print(f"[INFO] Query Condition: {order_condition}")
+            order_result_flag, order_result_query = super().query_record(super().get_tbl_ORDER(), order_columns, order_condition)
+
+            if order_result_flag:
+                i = 0
+                orders_length = len(order_result_query)
+                print(f"[INFO] Got a total of {orders_length} Phone Case orders...")
+                print(f"\n[INFO] Orders:")
+
+                for row_order in order_result_query:
+                    i += 1
+                    found_phone_cases = False
+
+                    order_id = row_order.get("ID")
+
+                    order_data = {
+                        "order_id": order_id,
+                        "order_name": row_order.get("NAME"),
+                        "created_at": f"{row_order.get("CREATED_AT")}",
+                        "customer_name": row_order.get("CUSTOMER"),
+                        "customer_email": row_order.get("EMAIL"),
+                        "tags": row_order.get("TAGS"),
+                        "country_code": row_order.get("COUNTRY_CODE"),
+                        "shipping_label_url": row_order.get("SHIPPING_LABEL_URL"), # "https://api.shipengine.com/v1/labels/se-12345678.pdf
+                        "line_items": [],
+                        "shipping_address": []
+                    }
+
+                    try:
+                        shipp_address = row_order.get("SHIPPING_ADDRESS")
+                        if shipp_address is not None and shipp_address != "":
+                            order_data['shipping_address'] = self.utils.convert_json_to_object(shipp_address)
+                        else:
+                            result_flag_shipping_address, result_query_shipping_address = self.shipping_address.get_specific_shipping_address(order_id)
+                            if result_flag_shipping_address:
+                                order_data['shipping_address'] = result_query_shipping_address
+                    except Exception as e:
+                        print(f"[ERROR] Error while getting shipping address: {e}")
+                        pass
+
+                    line_item_condition = "1=1"
+                    if len(phone_case_ids) > 0:
+                        line_item_condition += items_ids_condition
+                    line_item_condition += f"\nAND ORDER_ID = '{order_id}'"
+                    line_item_condition += f"\nAND (FULFILLMENT_STATUS IS NULL OR FULFILLMENT_STATUS = 'partial')"
+                    line_item_condition += f"\nAND FULFILLABLE_QUANTITY > 0"
+
+                    item_result_flag, item_result_query = super().query_record(super().get_tbl_ORDER_LINE_ITEM(), line_item_columns, line_item_condition)
+                    if item_result_flag:
+                        items_length = len(item_result_query)
+                        count_items += items_length
+                        found_phone_cases = True
+                        for row_item in item_result_query:
+                            item_data = {
+                                "id": row_item.get("ID"),
+                                "order_id": row_item.get("ORDER_ID"),
+                                "product_id": row_item.get("PRODUCT_ID"),
+                                "name": row_item.get("NAME"),
+                                "title": row_item.get("TITLE"),
+                                "sku": row_item.get("SKU"),
+                                "variant_id": row_item.get("VARIANT_ID"),
+                                "variant_title": row_item.get("VARIANT_TITLE"),
+                                "fulfillable_quantity": row_item.get("FULFILLABLE_QUANTITY")
+                            }
+                            order_data['line_items'].append(item_data)
+
+                    print(f"[INFO] {i}...{orders_length} - Order: {row_order.get("NAME")} - Total of Phone Cases: {items_length}")
+                    if found_phone_cases:
+                        if count_orders < 1:
+                            first_order_id = order_id
+                        last_order_id = order_id
+                        count_orders += 1
+                        phone_cases_orders.append(order_data)
+
+                print(f"[INFO] Total of valid Orders: {count_orders} out of {orders_length}")
+                print(f"[INFO] Total of Phone Cases: {count_items}")
+
+                return True, phone_cases_orders, count_orders, count_items, first_order_id, last_order_id
+            else:
+                return False, None, count_orders, count_items, first_order_id, last_order_id
+        except Exception as e:
+            error_message = f"[ERROR] Error while getting all valid orders with phone cases. Error: {str(e)}."
+            additional_details = f'[INFO] phone_case_ids: {phone_case_ids}'
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="get_all_valid_orders_with_phone_cases", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(2))
+            return False, None, count_orders, count_items, first_order_id, last_order_id
+        finally:
+            # Clearing Variables
+            print("[INFO] Clearing variables...")
+            try:
+                del phone_cases_orders
+                del found_phone_cases
+                del count_orders
+                del count_items
+                del orders_length
+                del columns
+                del order_columns
+                del row_order
+                del row_item
+                del rows_order
+                del rows_item
+                del order_result_query
+                del line_item_columns
+                del line_item_condition
+                del row_order
+                del row_item
+                del order_data
+                del line_items
+                del item
+                del item_prod_id
+                del item_data
+                del order_condition
+                del last_order_id
+                del order_result_flag
+                del item_result_flag
+            except:
+                pass
+
+    # Called by the function process_phone_case_orders
+    def match_phone_cases_with_images(self, phone_cases_orders):
+        print(f"\n[INFO] BEGIN - Matching Phone Cases with Images...")
+
+        print("[INFO] Instantiating Variables...")
+        #Variables
+        orders_counter = 0
+        items_counter = 0
+        total_items = 0
+        phone_cases_orders_length = len(phone_cases_orders)
+        line_items_length = 0
+        phone_cases_array = []
+        phone_case_products_info = []
+        phone_case_data = {}
+        phone_case_filtered = None
+        columns = None
+        row = None
+        result_flag = False
+        columns_array = ["PHONE_CASE_ID", "HAS_VARIANT_FLG", "VARIANT_NAME", "PHONE_CASE_FILE_PATH"]
+        condition = "1=1"
+
+        try:
+            result_flag, result_query = super().query_record(super().get_tbl_PHONE_CASE_IMAGES(), columns_array, condition)
+            if result_flag:
+                for row in result_query:
+                    phone_case_data = {
+                        "phone_case_id": row.get('PHONE_CASE_ID'),
+                        "has_variant_flg": row.get('HAS_VARIANT_FLG'),
+                        "variant_title": row.get('VARIANT_NAME'),
+                        "phone_case_file_path": row.get('PHONE_CASE_FILE_PATH')
+                    }
+                    phone_case_products_info.append(phone_case_data)
+
+            for phone_cases in phone_cases_orders:
+                orders_counter += 1
+                items_counter = 0
+                items = phone_cases.get('line_items')
+                line_items_length = len(items)
+
+                for item in items:
+                    total_items += 1
+                    items_counter += 1
+                    product_id = item.get('product_id')
+                    variant_title = item.get('variant_title')
+                    variant_title_splited = variant_title.split("/")[0].strip()
+
+                    phone_case_filtered = [phone_case for phone_case in phone_case_products_info if phone_case["phone_case_id"] == str(product_id)]
+                    if len(phone_case_filtered) > 1:
+                        phone_case_filtered = [phone_case for phone_case in phone_case_products_info if phone_case["phone_case_id"] == str(product_id) and phone_case["variant_title"] == str(variant_title_splited)]
+
+                    if len(phone_case_filtered) > 0:
+                        for i in phone_case_filtered:
+                            order_data = {
+                                "order_id": phone_cases.get('order_id'),
+                                "order_name": phone_cases.get('order_name'),
+                                "created_at": phone_cases.get('created_at'),
+                                "country_code": phone_cases.get('country_code'),
+                                "item_name": item.get('name'),
+                                "item_title": item.get('title'),
+                                "variant_title": i.get('variant_title'),
+                                "phone_case_file_path": i.get('phone_case_file_path'),
+                                "fulfillable_quantity": item.get('fulfillable_quantity')
+                            }
+                            print(f"[INFO] {str(orders_counter)}...{str(phone_cases_orders_length)} Phone Case(s) Matched... Order: {phone_cases.get('order_name')} - Item {items_counter} of {line_items_length}: {item.get('name')}")
+                            phone_cases_array.append(order_data)
+
+            print(f"[INFO] Total of {total_items} phone cases matched...")
+            print(f"[INFO] END - Finished Matching Phone Cases with Images...")
+
+            return phone_cases_array
+        except Exception as e:
+            error_message = f"[ERROR] Error while matching phone cases with images. Error: {str(e)}."
+            additional_details = f'[INFO] phone_cases_orders: {phone_cases_orders}'
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="match_phone_cases_with_images", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(2))
+            return []
+        finally:
+            print("[INFO] Clearing variables...")
+            try:
+                del orders_counter
+                del items_counter
+                del total_items
+                del phone_cases_orders_length
+                del line_items_length
+                del phone_cases_array
+                del phone_case_products_info
+                del phone_case_data
+                del phone_case_filtered
+                del columns
+                del row
+                del columns_array
+                del condition
+                del result_flag
+            except:
+                pass
+
+    # Called by the function process_phone_case_orders
+    def update_orders_processing_info(self, orders_array, country_code):
+        print(f"\n[INFO] BEGIN - Updating Orders Processing Info...")
+        order_columns = ["PRINTED_DATE"]
+        order_values = []
+        order_condition = "1=1"
+        counter = 0
+        len_orders = len(orders_array)
+        country_code = country_code if country_code is not None and country_code != "" else "ALL"
+
+        try:
+            order_values.append("DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')")
+            if country_code != 'US':
+                order_columns.append("PROCESSED_DATE")
+                order_values.append("DATE_FORMAT(NOW(), '%Y-%m-%d %H:%i:%s')")
+
+            order_condition += f"\nAND ID IN ("
+            for order in orders_array:
+                counter += 1
+                print(f"[INFO] {counter}...{len_orders} Updating Order: {order.get('order_name')}")
+                if counter == 1:
+                    order_condition += f"\n\t'{order.get('order_id')}'"
+                else:
+                    order_condition += f",\n\t'{order.get('order_id')}'"
+            order_condition += f"\n)"
+
+            # print(f'[INFO] Order Condition: {order_condition}')
+            print(f"[INFO] Updating Orders Processing Info...")
+            return super().update_record(super().get_tbl_ORDER(), order_columns, order_values, order_condition)
+        except Exception as e:
+            print(f"[ERROR] Error while updating orders processing info: {e}")
+            return False, 0, str(e)
+        finally:
+            print(f"[INFO] END - Finished Updating Orders Processing Info...")
+            try:
+                del order_columns, order_values, order_condition
+            except:
+                pass
+
+    # Function to process Phone Cases Orders - Starting function
+    def process_phone_case_orders(self, limit, country_code=None):
+        print(f"\n[INFO] BEGIN - Processing phone case orders..." if country_code is None else f"\n[INFO] BEGIN - Processing phone case orders for country code: {country_code}")
+
+        print("[INFO] Instantiating Variables...")
+        # Variables
+        country_code = str(country_code).upper() if country_code is not None and country_code != "" else "ALL"
+        print(f"[INFO] Country Code: {country_code}")
+        debug_mode = True if self.utils.get_DEBUG_MODE() == "TRUE" else False
+        last_batch_order_id = self.phone_cases.get_last_phone_case_batch_order_id(country_code=country_code) if not debug_mode else "4860667887692"
+        last_batch_number = 0
+        actual_batch_number = 0
+        limit = self.utils.get_PHONE_CASE_LIMIT() if limit is None else limit
+        current_date = self.utils.get_current_date_time()
+        phone_cases_orders = []
+        phone_cases_array = []
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        base_dir = os.path.dirname(current_dir)
+        output_file_path = os.path.join(base_dir, 'files/pdfs/phone_cases_output/')
+        pdf_file_name = None
+        slip_file_name = None
+        small_slip_file_name = None
+        file_names = []
+        page_width_cm = 111.76
+        page_height_cm = 19.80
+        image_width_cm = 8.50
+        image_height_cm = 16.80
+        space_between_images_cm = 1
+        phone_case_ids = None
+        result_flag = None
+        count_orders = 0
+        count_items = 0
+        first_order_id = 0
+        last_order_id = 0
+        batch_obj = None
+        batch_inserted_flag = False
+        batch_updated_flag = False
+        batch_inserted_count = 0
+        batch_updated_count = 0
+        result_string = None
+        pdf_generated_flag = False
+        slips_generated_flag = False
+        small_slips_generated_flag = False
+        full_pdf_file = None
+        full_slip_file = None
+        full_small_slip_file = None
+        results_pdf = None
+        results_slips = None
+        result_pdf_flag = False
+        result_slips_flag = False
+        order_updated_flag = False
+        rowcount = 0
+        result_pdf_url = None
+        result_slips_url = None
+        return_message = {
+            "code": 200,
+            "message": "Success",
+            "batch_number": 0,
+            "phone_cases_pdf": "",
+            "phone_cases_slips": ""
+        }
+        printing_history = None
+        batch_row_id = None
+        order_array = []
+
+        try:
+            phone_case_ids = self.phone_cases.get_all_phone_cases_ids()
+            result_flag, phone_cases_orders, count_orders, count_items, first_order_id, last_order_id = self.get_all_valid_orders_with_phone_cases(phone_case_ids=phone_case_ids, since_id=last_batch_order_id, limit=limit, country_code=country_code)
+            # print(f"[INFO] Phone cases orders: {phone_cases_orders}")
+
+            if result_flag and count_orders > 0:
+                batch_obj = self.phone_cases.PhoneCaseBatch()
+                batch_obj.set_FIRST_ORDER_ID(first_order_id)
+                batch_obj.set_LAST_ORDER_ID(last_order_id)
+                batch_obj.set_TOTAL_ORDERS(count_orders)
+                batch_obj.set_TOTAL_CASES(count_items)
+                batch_obj.set_COUNTRY_CODE(country_code)
+
+                if not debug_mode:
+                    batch_inserted_flag, batch_inserted_count, result_string = self.phone_cases.insert_phone_case_batch(batch_obj)
+                    actual_batch_number, batch_row_id = self.phone_cases.get_last_phone_case_batch_number(country_code=country_code)
+                else:
+                    batch_inserted_flag = True
+                    actual_batch_number = 45
+
+                actual_batch_number = int(actual_batch_number)
+                pdf_file_name = f"phone_cases_batch_{actual_batch_number}.pdf"
+                slip_file_name = f"phone_cases_slips_batch_{actual_batch_number}.pdf"
+                small_slip_file_name = f"phone_cases_small_slips_batch_{actual_batch_number}.pdf"
+                file_names = [pdf_file_name, slip_file_name, small_slip_file_name]
+
+                if batch_inserted_flag:
+                    phone_cases_array = self.match_phone_cases_with_images(phone_cases_orders)
+                    # print(f"phone_cases_array: {phone_cases_array}")
+                    pdf_generated_flag, full_pdf_file = self.utils.generate_phone_cases_pdf(batch_number=actual_batch_number, output_file_path=output_file_path, output_file_name=pdf_file_name, page_width_cm=page_width_cm, page_height_cm=page_height_cm, image_width_cm=image_width_cm, image_height_cm=image_height_cm, phone_cases_array=phone_cases_array, space_between_images_cm=space_between_images_cm)
+                    if pdf_generated_flag and not debug_mode:
+                        results_pdf = self.utils.upload_files_to_s3(file_directory=self.utils.get_base_directory() + "/files/pdfs/phone_cases_output/", file_names=[pdf_file_name], bucket_name="COMPANY_NAME-phone-cases-processing-pdfs")
+                    if country_code == 'US':
+                        slips_generated_flag, full_slip_file = self.utils.generate_slips(orders_array=phone_cases_orders, type="phone_case", output_file_path=output_file_path, output_file_name=slip_file_name, batch_number=actual_batch_number, page_width_cm=10.16, page_height_cm=15.24)
+                        if slips_generated_flag and not debug_mode:
+                            results_slips = self.utils.upload_files_to_s3(file_directory=self.utils.get_base_directory() + "/files/pdfs/phone_cases_output/", file_names=[slip_file_name], bucket_name="COMPANY_NAME-phone-cases-processing-slips")
+                    else:
+                        small_slips_generated_flag, full_small_slip_file = self.utils.generate_small_size_slips(orders_array=phone_cases_orders, type="phone_case", output_file_path=output_file_path, output_file_name=small_slip_file_name, batch_number=actual_batch_number, page_width_cm=5.08, page_height_cm=3.81)
+                        if not debug_mode:
+                            results_slips = self.utils.upload_files_to_s3(file_directory=self.utils.get_base_directory() + "/files/pdfs/phone_cases_output/", file_names=[small_slip_file_name], bucket_name="COMPANY_NAME-phone-cases-processing-slips")
+
+                    if not debug_mode:
+                        for result_pdf in results_pdf:
+                            result_pdf_flag = result_pdf.get('success')
+                            if result_pdf_flag == True:
+                                result_pdf_url = result_pdf.get('url')
+                                batch_obj.set_PDFS_URL(result_pdf_url)
+                                self.utils.delete_files(sheet_file_path=None, pdf_file_path=output_file_path, sheet_file_names=[], pdf_file_names=[pdf_file_name])
+
+                    if not debug_mode:
+                        for result_slip in results_slips:
+                            result_slips_flag = result_slip.get('success')
+                            if result_slips_flag == True:
+                                result_slips_url = result_slip.get('url')
+                                batch_obj.set_SLIPS_PDFS_URL(result_slips_url)
+                                self.utils.delete_files(sheet_file_path=None, pdf_file_path=output_file_path, sheet_file_names=[], pdf_file_names=[slip_file_name if country_code == 'US' else small_slip_file_name])
+
+                    if debug_mode:
+                        result_pdf_flag = True
+                        result_slips_flag = True
+
+                    if result_pdf_flag and result_slips_flag:
+                        if not debug_mode:
+                            batch_updated_flag, batch_updated_count, result_string = self.phone_cases.update_phone_case_batch(phone_case_batch_number=actual_batch_number, phone_case_batch=batch_obj)
+                        else:
+                            batch_updated_flag = True
+                        if batch_updated_flag:
+                            if not debug_mode:
+                                order_updated_flag, rowcount, return_string = self.update_orders_processing_info(orders_array=phone_cases_orders, country_code=country_code)
+                            else:
+                                order_updated_flag = True
+
+                            if order_updated_flag:
+                                if not debug_mode:
+                                    printing_history = self.printing.printingHistory()
+                                    printing_history.set_batch_id(batch_row_id)
+                                    printing_history.set_batch_number(actual_batch_number)
+                                    printing_history.set_pdf_name(pdf_file_name)
+                                    printing_history.set_pdf_type("normal_phone_case" if country_code != 'US' else "partial_phone_case")
+                                    printing_history.set_pdf_url(result_pdf_url)
+                                    printing_history.set_slip_pdf_url(result_slips_url)
+                                    printing_history.set_printed_date(f"DATE_FORMAT('{current_date}', '%Y-%m-%d %H:%i:%s')" if printing_history is not None else None)
+                                    for order in phone_cases_orders:
+                                        order_array.append(order.get('order_id'))
+                                    printing_history.set_order_ids(self.utils.convert_object_to_json(order_array))
+                                    printing_history.set_total_orders(count_orders)
+
+                                    inserted_flag, inserted_count, result_string = self.printing.insert_printing_history(printing_history)
+
+                                    if inserted_flag:
+                                        print(f"[INFO] Printing History inserted successfully.")
+                                    else:
+                                        self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_phone_case_orders", error_code=None, error_message=result_string, additional_details=None, error_severity=self.utils.get_error_severity(2))
+
+                                return_flag = True
+                                status_code = 200
+                                return_message["code"] = 200
+                                return_message["message"] = "Success"
+                                return_message["batch_number"] = actual_batch_number
+                                return_message["phone_cases_pdf"] = result_pdf_url
+                                return_message["phone_cases_slips"] = result_slips_url
+                            else:
+                                print(f"[ERROR] Error while updating orders processing info. Error: {return_string}")
+                                return_flag = False
+                                status_code = 500
+                                return_message["code"] = 500
+                                return_message["message"] = f"Error while updating orders processing info. Error: {return_string}"
+                                return_message["batch_number"] = actual_batch_number
+                                return_message["phone_cases_pdf"] = ""
+                                return_message["phone_cases_slips"] = ""
+                        else:
+                            print(f"[ERROR] Error while updating phone case batch. Error: {result_string}")
+                            return_flag = False
+                            status_code = 500
+                            return_message["code"] = 500
+                            return_message["message"] = f"Error while updating phone case batch. Error: {result_string}"
+                            return_message["batch_number"] = actual_batch_number
+                            return_message["phone_cases_pdf"] = ""
+                            return_message["phone_cases_slips"] = ""
+                    else:
+                        print(f"[ERROR] Error while updating phone case batch. Error: {result_string}")
+                        return_flag = False
+                        status_code = 500
+                        return_message["code"] = 500
+                        return_message["message"] = f"Error while updating phone case batch. Error: {result_string}"
+                        return_message["batch_number"] = actual_batch_number
+                        return_message["phone_cases_pdf"] = ""
+                        return_message["phone_cases_slips"] = ""
+                else:
+                    print(f"[ERROR] Error while inserting phone case batch. Error: {result_string}")
+                    return_flag = False
+                    status_code = 500
+                    return_message["code"] = 500
+                    return_message["message"] = f"Error while inserting phone case batch. Error: {result_string}"
+                    return_message["batch_number"] = actual_batch_number
+                    return_message["phone_cases_pdf"] = ""
+                    return_message["phone_cases_slips"] = ""
+            else:
+                print(f"\n[INFO] No phone cases orders found to process...")
+                return_flag = False
+                status_code = 404
+                return_message["code"] = 404
+                return_message["message"] = "No phone cases orders found to process."
+                return_message["batch_number"] = actual_batch_number
+                return_message["phone_cases_pdf"] = ""
+                return_message["phone_cases_slips"] = ""
+
+            return return_flag, status_code, return_message
+        except Exception as e:
+            error_message = f"[ERROR] Error while processing phone case orders. Error: {str(e)}."
+            additional_details = f'[INFO] since_id: {last_batch_order_id}'
+            additional_details += f'\n[INFO] batch_number: {actual_batch_number}'
+            additional_details += f'\n[INFO] limit: {limit}'
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="process_phone_case_orders", error_code=None, error_message=error_message, additional_details=additional_details, error_severity=self.utils.get_error_severity(2))
+            return_flag = False
+            status_code = 500
+            return_message["code"] = 500
+            return_message["message"] = f"Error while processing phone case orders. Error: {str(e)}"
+            return_message["batch_number"] = actual_batch_number
+            return_message["phone_cases_pdf"] = ""
+            return_message["phone_cases_slips"] = ""
+            return return_flag, status_code, return_message
+        finally:
+            print(f"[INFO] END - Processing phone case orders...")
+            print("\n[INFO] Clearing variables...")
+            try:
+                del last_batch_order_id, last_batch_number, actual_batch_number, limit, current_date, phone_cases_orders, phone_cases_array, current_dir, base_dir, output_file_path, pdf_file_name, slip_file_name, small_slip_file_name, file_names, page_width_cm, page_height_cm, image_width_cm, image_height_cm, space_between_images_cm, phone_case_ids, result_flag, count_orders, count_items, first_order_id, last_order_id, batch_obj, batch_inserted_flag, batch_updated_flag, batch_inserted_count, batch_updated_count, result_string, pdf_generated_flag, slips_generated_flag, small_slips_generated_flag, full_pdf_file, full_slip_file, full_small_slip_file, results_pdf, results_slips, result_pdf_flag, result_slips_flag, order_updated_flag, rowcount, result_pdf_url, result_slips_url, return_message
+            except Exception as e:
+                pass
+
     def prepare_orders_for_fullfillment(self, limit):
         # Variables
         first_order_id = None
@@ -2345,7 +3840,7 @@ class OrderController(DataController):
         values = None
 
         try:
-            first_order_id = self.get_last_processed_order_id()
+            first_order_id = self.get_last_processed_order_id_batch()
             order_ids, last_order_id = self.get_order_ids_for_processing(first_id=first_order_id, last_id=None, created_at_min=None, created_at_max=one_hour_ago, limit=limit)
             if last_order_id is not None:
                 columns = ["FIRST_ORDER_ID", "LAST_ORDER_ID", "TOTAL_ORDERS"]
@@ -2356,12 +3851,7 @@ class OrderController(DataController):
         finally:
             print(f"Clearing variables...")
             try:
-                del first_order_id
-                del last_order_id
-                del one_hour_ago
-                del order_ids
-                del columns
-                del values
+                del first_order_id, last_order_id, one_hour_ago, order_ids, columns, values
             except Exception as e:
                 print(f"Variable not found: {e}")
                 pass
@@ -2388,6 +3878,879 @@ class OrderController(DataController):
                 del columns
                 del condition
                 del result_flag
+            except Exception as e:
+                print(f"Variable not found: {e}")
+                pass
+
+    def get_order_data_by_name(self, order_name, order_columns = ["ID"]):
+        # Variables
+        order_id = None
+        if "ID" not in order_columns:
+            columns = ["ID"]+order_columns
+        else:
+            columns = order_columns
+        condition = "1=1"
+        condition += f"\nAND NAME = '{order_name}'"
+        result_flag = False
+
+        try:
+            result_flag, result_query = super().query_record(super().get_tbl_ORDER(), columns, condition)
+            if result_flag:
+                for row in result_query:
+                    order_id = row.get("ID")
+            return result_flag, order_id, result_query
+        except Exception as e:
+            return None
+        finally:
+            try:
+                del order_id
+                del columns
+                del condition
+                del result_flag
+                gc.collect()
+            except Exception as e:
+                print(f"Order name not found: {e}")
+                pass
+
+    def add_tags_to_orders(self, file_path, file_name, new_tags_string):
+        """add_tags_to_orders: Add new TAGs to list of orders in a CSV file.
+        Usage:
+            add_tags_to_orders(file_path, file_name, new_tags_string)
+
+        Args:
+            file_path (String): CSV File path
+            file_name (String): CSV file with one column of order numbers.
+            new_tags_string (string): String with new tags to be added separated by space, comma, semicolon, pipe (vertical slash) or forward slash.
+        """
+        result_flag_csv = True
+        result_data_csv = None
+        result_message_csv = None
+        order_columns = ["ID", "TAGS"]
+        new_tag_list = [tag.strip() for tag in re.sub("[,|/;]+", ",", string = new_tags_string).split(",")]
+        payload = None
+        tags_array = None
+        result_flag = None
+        order_id = None
+        result_query = None
+        order_name = None
+        old_tags = None
+        errors = []
+
+        print(f"[INFO] BEGIN - Add Tags to Orders...")
+        try:
+            result_flag_csv, result_data_csv, result_message_csv = self.utils.read_csv_file(file_path=file_path, file_name=file_name)
+        except Exception as e:
+            print(f"[ERROR] CSV file error - {e}.")
+            return result_flag_csv, result_data_csv, result_message_csv
+        
+        try:
+            if result_flag_csv:
+                for order in result_data_csv:
+                    order_name = list(order.values())[0]
+                    result_flag, order_id, result_query = self.get_order_data_by_name(order_name, order_columns)
+
+                    if result_flag:
+                        for o in result_query:
+                            old_tags = o.get('TAGS')
+                            break
+
+                        tags_array = (old_tags.split(',') if old_tags is not None else []) + new_tag_list
+                        print(f"[INFO] Adding {", ".join(tag for tag in new_tag_list[:-1])}, and {new_tag_list[-1]} tags to order {order_id}.")
+
+                        payload = self.utils.convert_object_to_json({
+                            "order": {
+                                "id": order_id,
+                                "tags": tags_array
+                            }
+                        })
+                        result_flag, order, response_description, code = self.shopify.post_shopify_update_order(order_id, payload, api_version=self.utils.get_SHOPIFY_API_VERSION())
+                        if code != 201 and code != 200:
+                            print(f"[ERROR] Including {", ".join(tag for tag in new_tag_list[:-1])}, and {new_tag_list[-1]} tags to order {order}. Status code: {code}")
+                            errors.append({
+                                "order": order_name,
+                                "tags": tags_array, 
+                                "error" : response_description    
+                            })
+                        print(f"[INFO] New tags added to order {order_id}.")
+                if len(errors) > 0:
+                    email_to = ['xxxxxxx@COMPANY_NAME.com', 'xxxxxxx@COMPANY_NAME.com']
+                    email_body = "Orders with error while adding tags:"
+                    email_body += "\nOrders:"
+                    email_body += f"\n{str(errors)}"
+                    email_subject = "[ADDING TAGS] Errors"
+                    email_from = 'xxxxxxxx@gmail.com'
+                    try:
+                        self.utils.send_email(email_from=email_from, email_to=email_to, email_subject=email_subject, email_body=email_body, file_path=file_path, file_names=[file_name])
+                    except Exception as e:
+                        self.utils.send_exception_email(module=self.get_module_name(), function="send_processed_customs_orders_emails", error=str(e), additional_info=None, start_time=self.get_start_time(), end_time=self.utils.get_current_date_time())
+                        print(f"[ERROR] - {e}")
+                        return False
+                return result_flag_csv, result_data_csv, result_message_csv
+            else:
+                raise Exception(f"File empty or not found") 
+        except Exception as e:
+
+            print(f"[ERROR] Tags NOT added. Orders not altered. {e}.")
+            return result_flag_csv, result_data_csv, result_message_csv
+        finally:
+            self.utils.delete_files(sheet_file_path=file_path, pdf_file_path=None, sheet_file_names=[file_name], pdf_file_names=None)
+            print(f"[INFO] END - Finished Add Tags to Orders...")
+            print("\n[INFO] Clearing variables...")
+            try:
+                del result_flag_csv, result_data_csv, result_message_csv, order_columns, new_tag_list, payload, tags_array, result_flag, order_id, result_query, order_name, old_tags
+                gc.collect()
+            except Exception as e:
+                pass
+
+    def cancel_open_or_in_progress_order_fulfillments(self, count_orders, total_orders_to_fulfill, order_id, order_number, items, order_fulfillment_status, tracking_number, message, new_location_name, api_version=None):
+        # print(f"\n[INFO] BEGIN - Canceling Orders with Fulfillment in Progress...")
+        fulfillment_id = None
+        fulfillment_status = None
+        assigned_location = None
+        curr_fulfill_location = None
+        fulfillment_order_return_flag = False
+        fulfillment = None
+        response_description = "Success"
+        status_code = 200
+        fulfillment_orders = None
+        fulfill = None
+        fulfillment_order_cancel_req_return_flag = False
+        fulfillment_order_cancel_return_flag = False
+        fulfillment_cancel_req = None
+        fulfillment_cancel = None
+        return_flag = False
+        fulfillment_line_items = None
+        found_item = False
+        item = None
+        line_item_id = None
+        fulfillment_line_item_id = None
+        line_item_variant_id = None
+        fulfillment_line_item_variant_id = None
+        fulfillment_dict = None
+        fulfill_item = None
+
+        try:
+            fulfillment_order_return_flag, fulfillment, response_description, status_code = self.shopify.get_shopify_fulfillment_orders(order_id=order_id, include_financial_summaries=None, include_order_reference_fields=None, api_version=api_version)
+
+            if fulfillment_order_return_flag:
+                fulfillment_orders = fulfillment.get("fulfillment_orders")
+
+                for fulfill in fulfillment_orders:
+                    assigned_location = fulfill.get("assigned_location")
+                    fulfillment_id = fulfill.get("id")
+                    fulfillment_status = fulfill.get("status")
+                    curr_fulfill_location = assigned_location.get("name")
+                    fulfillment_line_items = fulfill.get("line_items")
+                    found_item = False
+
+                    if fulfillment_status == "in_progress":
+                        if curr_fulfill_location != new_location_name:
+                            # Create a dictionary for quick lookups
+                            fulfillment_dict = {str(fulfill_item.get("variant_id")): fulfill_item for fulfill_item in fulfillment_line_items}
+                            found_item = False
+
+                            for item in items:
+                                line_item_variant_id = str(item.get("variant_id"))
+
+                                if line_item_variant_id in fulfillment_dict:
+                                    found_item = True
+                                    break
+
+                            if found_item:
+                                self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Requesting Fulfillment Cancel for Location {curr_fulfill_location}...")
+                                # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Requesting Fulfillment Cancel for Location {curr_fulfill_location}...")
+                                fulfillment_order_cancel_req_return_flag, fulfillment_cancel_req, response_description, status_code = self.shopify.post_shopify_fulfillment_cancelation_request(fulfillment_order_id=fulfillment_id, message=message, api_version=api_version)
+
+                                if fulfillment_order_cancel_req_return_flag:
+                                    self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Cancelling Fulfillment for Location {curr_fulfill_location}...")
+                                    # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Cancelling Fulfillment for Location {curr_fulfill_location}...")
+                                    fulfillment_order_cancel_return_flag, fulfillment_cancel, response_description, status_code = self.shopify.post_shopify_fulfillment_orders_cancel(fulfillment_order_id=fulfillment_id, api_version=api_version)
+
+                                    if fulfillment_order_cancel_return_flag:
+                                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Order Fulfillment canceled successfully...")
+                                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Order Fulfillment canceled successfully...")
+                                        return_flag = True
+                                    else:
+                                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Error while canceling order fulfillment. Error: {response_description}...")
+                                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Error while canceling order fulfillment. Error: {response_description}...")
+                                else:
+                                    self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tError while canceling order fulfillment request. Error: {response_description}...")
+                                    # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tError while canceling order fulfillment request. Error: {response_description}...")
+                        else:
+                            self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Order is already assigned to {new_location_name}...")
+                            # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Order is already assigned to {new_location_name}...")
+                            return_flag = True
+                    elif fulfillment_status == "open":
+                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Order is already open...")
+                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Order is already open...")
+                        return_flag = True
+                    else:
+                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Order is already fulfilled or canceled...")
+                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Order is already fulfilled or canceled...")
+            else:
+                self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tCancel Fulfillment - Error while getting order fulfillment. Error: {response_description}")
+                # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Error while getting order fulfillment. Error: {response_description}")
+                return_flag = True
+
+            return return_flag, fulfillment, fulfillment_cancel_req, fulfillment_cancel, response_description, status_code
+        except Exception as e:
+            print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tCancel Fulfillment - Error: {str(e)}")
+            return False, fulfillment, fulfillment_cancel_req, fulfillment_cancel, f"[ERROR] Error while canceling order fulfillment. Error: {str(e)}", status_code
+        finally:
+            # print(f"[INFO] END - Finished Canceling Orders with Fulfillment in Progress...")
+            # print("\n[INFO] Clearing variables...")
+            try:
+                del fulfillment_id, fulfillment_status, assigned_location, curr_fulfill_location, fulfillment_order_return_flag, fulfillment, response_description, status_code, fulfillment_orders, fulfill, fulfillment_order_cancel_req_return_flag, fulfillment_order_cancel_return_flag, fulfillment_cancel_req, fulfillment_cancel, return_flag, found_item, fulfillment_line_items, item, line_item_id, fulfillment_line_item_id, line_item_variant_id, fulfillment_line_item_variant_id
+            except Exception as e:
+                pass
+
+    def move_fulfillment_location(self, count_orders, total_orders_to_fulfill, order_id, order_number, items, order_fulfillment_status, tracking_number, new_location_name, api_version=None):
+        item_columns = ["PRODUCT_ID", "NAME", "TITLE", "SKU", "VARIANT_ID", "VARIANT_TITLE", "FULFILLABLE_QUANTITY", "FULFILLMENT_STATUS"]
+        items_condition = f"1=1"
+        found_location = False
+        fulfillment_order_return_flag = False
+        fulfillment_locations_return_flag = False
+        fulfillment = None
+        response_description = "Success"
+        status_code = 200
+        fulfillment_orders = None
+        assigned_location = None
+        fulfillment_id = None
+        fulfillment_status = None
+        curr_fulfill_location = None
+        fulfillment_locations = None
+        locations_for_move = None
+        location = None
+        loc_id = None
+        loc_name = None
+        local = None
+        new_fulfill_loc_id = None
+        new_fulfill_loc_name = None
+        line_items = None
+        fulfillment_order_line_items = []
+        item = {}
+        line_item_id = None
+        line_item_quantity = 0
+        line_item_fulfillable_quantity = 0
+        line_item_variant_id = None
+        change_location_flag = False
+        change_location_item_flag = False
+        can_fulfill = False
+        product_name = None
+        product_title = None
+        prod_fulfillment_status = "unfulfilled"
+        return_flag_item = None
+        return_query_item = None
+        fulfillment_location_move_return_flag = None
+        fulfillment_move = None
+        fulfillment_line_items = None
+        found_item = False
+        item = None
+        fulfillment_line_item_id = None
+        fulfillment_dict = None
+        fulfill_item = None
+        total_items_to_change_location = 0
+        total_items = 0
+
+        try:
+            fulfillment_order_return_flag, fulfillment, response_description, status_code = self.shopify.get_shopify_fulfillment_orders(order_id=order_id, include_financial_summaries=None, include_order_reference_fields=None, api_version=api_version)
+
+            if fulfillment_order_return_flag:
+                fulfillment_orders = fulfillment.get("fulfillment_orders")
+
+                for fulfill in fulfillment_orders:
+                    assigned_location = fulfill.get("assigned_location")
+                    fulfillment_id = fulfill.get("id")
+                    fulfillment_status = fulfill.get("status")
+                    curr_fulfill_location = assigned_location.get("name")
+                    fulfillment_line_items = fulfill.get("line_items")
+                    found_item = False
+
+                    if fulfillment_status == "open" or fulfillment_status == "in_progress":
+                        if curr_fulfill_location != new_location_name:
+                            fulfillment_dict = {str(fulfill_item.get("variant_id")): fulfill_item for fulfill_item in fulfillment_line_items}
+                            found_item = False
+
+                            for item in items:
+                                line_item_variant_id = str(item.get("variant_id"))
+
+                                if line_item_variant_id in fulfillment_dict:
+                                    found_item = True
+                                    break
+
+                            if found_item:
+                                print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{order_fulfillment_status if len(order_fulfillment_status) >= 11 else order_fulfillment_status + '\t'}\tMove Fulfill Location - Getting Fulfillment Locations...")
+                                fulfillment_locations_return_flag, fulfillment_locations, response_description, status_code = self.shopify.get_shopify_fulfillment_locations_for_move(fulfillment_order_id=fulfillment_id, api_version=None)
+
+                                if fulfillment_locations_return_flag:
+                                    locations_for_move = fulfillment_locations.get("locations_for_move")
+                                    location = None
+                                    loc_id = None
+                                    loc_name = None
+                                    found_location = False
+
+                                    if locations_for_move is not None and locations_for_move != []:
+                                        for local in locations_for_move:
+                                            location = local.get("location")
+                                            loc_id = location.get("id")
+                                            loc_name = location.get("name")
+                                            if loc_name == new_location_name:
+                                                found_location = True
+                                                break
+
+                                        if found_location:
+                                            new_fulfill_loc_id = loc_id
+                                            new_fulfill_loc_name = loc_name
+                                            line_items = fulfill.get("line_items")
+                                            fulfillment_order_line_items = []
+                                            item = {}
+                                            line_item_id = None
+                                            line_item_quantity = 0
+                                            line_item_fulfillable_quantity = 0
+                                            fulfillment_line_item_variant_id = None
+                                            change_location_flag = False
+                                            can_fulfill = False
+                                            total_items = 0
+
+                                            for line_item in line_items:
+                                                total_items += 1
+                                                line_item_id = line_item.get("id")
+                                                line_item_quantity = line_item.get("quantity")
+                                                line_item_fulfillable_quantity = line_item.get("fulfillable_quantity")
+                                                fulfillment_line_item_variant_id = str(line_item.get("variant_id"))
+
+                                                if line_item_quantity > 0 and line_item_fulfillable_quantity > 0:
+                                                    product_name = None
+                                                    product_title = None
+                                                    prod_fulfillment_status = "unfulfilled"
+                                                    line_item_variant_id = None
+                                                    change_location_item_flag = False
+
+                                                    for i in items:
+                                                        product_name = i.get("name")
+                                                        product_title = i.get("title")
+                                                        prod_fulfillment_status = i.get("fulfillment_status")
+                                                        line_item_variant_id = str(i.get("variant_id"))
+
+                                                        if line_item_variant_id == fulfillment_line_item_variant_id:
+                                                            item = {
+                                                                "id": line_item_id,
+                                                                "quantity": line_item_fulfillable_quantity
+                                                            }
+                                                            fulfillment_order_line_items.append(item)
+                                                            change_location_flag = True
+                                                            change_location_item_flag = True
+                                                            print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Changing Location from '{curr_fulfill_location}' to '{new_fulfill_loc_name}' for product '{product_title}' with fulfillment status '{prod_fulfillment_status}'...")
+                                                            break
+
+                                                    if not change_location_item_flag:
+                                                        print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - The Item '{product_title}' was not Found in the fulfillment List of items...")
+                                                else:
+                                                    print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Item not fulfillable...")
+
+                                            total_items_to_change_location = len(fulfillment_order_line_items)
+
+                                            if change_location_flag:
+                                                print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Requesting Fulfillment Location Move from '{curr_fulfill_location}' to '{new_fulfill_loc_name}' for {total_items_to_change_location} out of {total_items} items...")
+                                                fulfillment_location_move_return_flag, fulfillment_move, response_description, status_code = self.shopify.post_shopify_fulfillment_location_move(fulfillment_order_id=fulfillment_id, new_location_id=new_fulfill_loc_id, fulfillment_order_line_items=fulfillment_order_line_items, api_version=None)
+
+                                                if fulfillment_location_move_return_flag:
+                                                    print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Location Changed Successfully")
+                                                    can_fulfill = True
+                                                else:
+                                                    print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Location not Changed. Error: {response_description}")
+                                            else:
+                                                print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - No Locations found for move...")
+                                                can_fulfill = True
+                                        else:
+                                            can_fulfill = False
+                                            print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - No Locations found for move...")
+                                    else:
+                                        can_fulfill = False
+                                        print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{order_fulfillment_status if len(order_fulfillment_status) >= 11 else order_fulfillment_status + '\t'}\tMove Fulfill Location - No Locations found for move...")
+                                else:
+                                    can_fulfill = False
+                                    print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Error while getting fulfillment locations. Error: {response_description}")
+                        else:
+                            print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Order is already assigned to '{new_location_name}'...")
+                            can_fulfill = True
+                    else:
+                        print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tMove Fulfill Location - Order is already fulfilled or canceled...")
+
+            return can_fulfill, fulfillment_move, response_description, status_code
+        except Exception as e:
+            print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{order_fulfillment_status if len(order_fulfillment_status) >= 11 else order_fulfillment_status + '\t'}\tMove Fulfill Location - Error while moving fulfillment location. Error: {str(e)}")
+            return False, f"[ERROR] Error while moving fulfillment location. Error: {str(e)}"
+        finally:
+            try:
+                del item_columns, items_condition, found_location, fulfillment_order_return_flag, fulfillment_locations_return_flag, fulfillment, response_description, status_code, fulfillment_orders, assigned_location, fulfillment_id, fulfillment_status, curr_fulfill_location, fulfillment_locations, locations_for_move, location, loc_id, loc_name, local, new_fulfill_loc_id, new_fulfill_loc_name, line_items, fulfillment_order_line_items, item, line_item_id, line_item_quantity, line_item_fulfillable_quantity, line_item_variant_id, change_location_flag, change_location_item_flag, can_fulfill, product_name, product_title, prod_fulfillment_status, return_flag_item, return_query_item, fulfillment_location_move_return_flag, fulfillment_move, fulfillment_line_items, found_item, fulfillment_line_item_id, fulfillment_dict, fulfill_item, total_items_to_change_location
+            except Exception as e:
+                print(f"Variable not found: {e}")
+                pass
+
+    def match_items_from_csv(self, file_path, file_name):
+        order_columns = ["ID", "NAME", "CREATED_AT", "COUNTRY_CODE", "FULFILLMENT_STATUS", "TAGS", "NOTE"]
+        item_columns = ["ID", "PRODUCT_ID", "NAME", "TITLE", "SKU", "VARIANT_ID", "VARIANT_TITLE", "FULFILLABLE_QUANTITY", "FULFILLMENT_STATUS"]
+        result_flag_csv = False
+        result_data_csv = None
+        result_message_csv = None
+        total_orders_to_fulfill = 0
+        count_orders = 0
+        count_items = 0
+        order_number = None
+        tracking_number = None
+        order_condition = None
+        return_flag_order = False
+        return_query_order = None
+        order_id = None
+        order_created = None
+        order_country_code = None
+        order_fulfillment_status = None
+        order_tags = None
+        order_note = None
+        line_item_id = None
+        line_item_quantity = 0
+        line_item_fulfillable_quantity = 0
+        fulfillment_line_item_variant_id = None
+        line_item_variant_id = None
+        can_fulfill = False
+        return_flag_cancel_fulfill = False
+        fulfillment = None
+        fulfillment_cancel_req = None
+        fulfillment_cancel = None
+        response_description = "Success"
+        status_code = None
+        fulfillment_move = None
+        fulfillment_order_return_flag = None
+        fulfillment_orders = None
+        assigned_location = None
+        fulfillment_id = None
+        fulfillment_status = None
+        curr_fulfill_location = None
+        fulfillment_line_items = None
+        fulfillment_order_line_items = None
+        item = None
+        product_name = None
+        product_title = None
+        items_condition = None
+        return_flag_item = False
+        return_query_item = None
+        fulfillment_result_flag = False
+        fulfillment_result = None
+        today = self.utils.get_current_date_time()
+        base_dir = self.utils.get_base_directory()
+        return_flag = False
+        orders_array = []
+        order_list = {
+            "number": None,
+            "carrier_name": None,
+            "tracking_number": None,
+            "items": []
+        }
+        items_array = []
+        item_list = {
+            "name": None,
+            "sku": None
+        }
+
+        try:
+            print(f"[INFO] Reading CSV File...")
+            result_flag_csv, result_data_csv, result_message_csv = self.utils.read_csv_file(file_path=file_path, file_name=file_name)
+
+            if result_flag_csv:
+                # Verify if the CSV has the columns order_number, tracking_number, carrier_name, item_sku
+                if "order_number" not in result_data_csv[0].keys() or "tracking_number" not in result_data_csv[0].keys() or "item_sku" not in result_data_csv[0].keys():
+                    print(f"[ERROR] CSV file does not have the required columns. Please make sure the CSV file has the columns 'order_number', 'tracking_number', 'carrier_name', 'item_sku'")
+                    return False, None, f"[ERROR] CSV file does not have the required columns. Please make sure the CSV file has the columns 'order_number', 'tracking_number', 'carrier_name', 'item_sku'"
+
+                total_orders_to_fulfill = len(result_data_csv)
+                print(f"\n[INFO] Got a total of {total_orders_to_fulfill} Items to fulfill...")
+
+                print(f"[INFO] Matching Orders and Items...")
+                print(f"[INFO] Progress\t\tOrder Num\tItem SKU")
+                for data in result_data_csv:
+                    count_items += 1
+                    order_list = {}
+                    item_list = {}
+                    items_array = []
+                    order_number = None
+                    tracking_number = None
+                    order_number = data.get("order_number")
+                    tracking_number = data.get("tracking_number")
+                    carrier_name = data.get("carrier_name")
+                    item_sku = data.get("item_sku")
+                    print(f"[INFO] {count_items}...{total_orders_to_fulfill}{'\t\t' if len(str(count_items) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number}\t{item_sku}")
+
+                    order_condition = f"1=1"
+                    order_condition += f"\nAND NAME = '{order_number}'"
+                    return_flag_order, return_query_order = super().query_record(super().get_tbl_ORDER(), order_columns, order_condition)
+                    for order in return_query_order:
+                        order_id = int(order.get("ID"))
+                        order_created = order.get("CREATED_AT")
+                        order_country_code = order.get("COUNTRY_CODE")
+                        order_fulfillment_status = "unfulfilled" if order.get("FULFILLMENT_STATUS") is None else order.get("FULFILLMENT_STATUS")
+                        order_tags = order.get("TAGS")
+                        order_note = order.get("NOTE")
+                        line_item_id = None
+                        line_item_quantity = 0
+                        line_item_fulfillable_quantity = 0
+                        line_item_variant_id = None
+
+                        items_condition = f"1=1"
+                        items_condition += f"\nAND ORDER_ID = '{order_id}'"
+                        items_condition += f"\nAND SKU = '{item_sku}'"
+
+                        return_flag_item, return_query_item = super().query_record(super().get_tbl_ORDER_LINE_ITEM(), item_columns, items_condition)
+                        if return_flag_item:
+                            for items in return_query_item:
+                                line_item_id = items.get("ID")
+                                product_name = items.get("NAME")
+                                product_title = items.get("TITLE")
+                                line_item_variant_id = items.get("VARIANT_ID")
+                                prod_fulfillment_status = "unfulfilled" if items.get("FULFILLMENT_STATUS") is None else items.get("FULFILLMENT_STATUS")
+
+                        if orders_array and any(o.get("order_number") == order_number for o in orders_array):
+                            # if order_number is in orders array, then append the item to the existing order
+                            for ordr in orders_array:
+                                if ordr.get("order_number") == order_number:
+                                    item_list = {
+                                        "id": line_item_id,
+                                        "sku": item_sku,
+                                        "name": product_name,
+                                        "title": product_title,
+                                        "fulfillment_status": prod_fulfillment_status,
+                                        "variant_id": line_item_variant_id
+                                    }
+                                    ordr.get("items").append(item_list)
+                                    break
+                        else:
+                            count_orders += 1
+                            item_list = {
+                                "id": line_item_id,
+                                "sku": item_sku,
+                                "name": product_name,
+                                "title": product_title,
+                                "fulfillment_status": prod_fulfillment_status,
+                                "variant_id": line_item_variant_id
+                            }
+                            items_array.append(item_list)
+
+                            order_list = {
+                                "order_id": order_id,
+                                "order_number": order_number,
+                                "order_created": order_created,
+                                "order_country_code": order_country_code,
+                                "order_fulfillment_status": order_fulfillment_status,
+                                "carrier_name": carrier_name,
+                                "tracking_number": tracking_number,
+                                "order_tags": order_tags,
+                                "order_note": order_note,
+                                "items": items_array
+                            }
+                            orders_array.append(order_list)
+                print(f"[INFO] Total Orders: {count_orders}")
+                print(f"[INFO] Total Items: {count_items}")
+                # print(f"[INFO] Orders Array: {orders_array}")
+
+                return True, orders_array, "Success"
+            else:
+                print(f"[ERROR] Error while reading CSV file. Error: {result_message_csv}")
+                return False, None, f"[ERROR] Error while reading CSV file. Error: {result_message_csv}"
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            return False, None, f"[ERROR] {e}"
+        finally:
+            try:
+                del order_columns, item_columns, result_flag_csv, result_data_csv, result_message_csv, total_orders_to_fulfill, count_orders, count_items, order_number, tracking_number, order_condition, return_flag_order, return_query_order, order_id, order_created, order_country_code, order_fulfillment_status, order_tags, order_note, line_item_id, line_item_quantity, line_item_fulfillable_quantity, fulfillment_line_item_variant_id, line_item_variant_id, can_fulfill, return_flag_cancel_fulfill, fulfillment, fulfillment_cancel_req, fulfillment_cancel, response_description, status_code, fulfillment_move, fulfillment_order_return_flag, fulfillment_orders, assigned_location, fulfillment_id, fulfillment_status, curr_fulfill_location, fulfillment_line_items, fulfillment_order_line_items, item, product_name, product_title, items_condition, return_flag_item, return_query_item, fulfillment_result_flag, fulfillment_result, today, base_dir, return_flag, orders_array, order_list, items_array, item_list
+            except Exception as e:
+                print(f"Variable not found: {e}")
+                pass
+
+    def fulfill_orders(self, file_path, file_name, email_to):
+        print(f"\n[INFO] BEGIN - Fulfilling Orders...")
+        order_columns = ["ID", "NAME", "CREATED_AT", "COUNTRY_CODE", "FULFILLMENT_STATUS", "TAGS", "NOTE"]
+        item_columns = ["ID", "PRODUCT_ID", "NAME", "TITLE", "SKU", "VARIANT_ID", "VARIANT_TITLE", "FULFILLABLE_QUANTITY", "FULFILLMENT_STATUS"]
+        result_flag_csv = False
+        result_flag_match_items = False
+        result_data_csv = None
+        result_message_csv = None
+        total_orders_to_fulfill = 0
+        count_orders = 0
+        count_items = 0
+        order_number = None
+        tracking_number = None
+        order_condition = None
+        return_flag_order = False
+        prod_fulfillment_status = "unfulfilled"
+        return_query_order = None
+        order_id = None
+        order_created = None
+        order_country_code = None
+        order_fulfillment_status = None
+        order_tags = None
+        order_note = None
+        line_item_id = None
+        line_item_fulfillable_quantity = 0
+        fulfillment_line_item_variant_id = None
+        line_item_variant_id = None
+        found_item = False
+        can_fulfill = False
+        return_flag_cancel_fulfill = False
+        fulfillment = None
+        fulfillment_cancel_req = None
+        fulfillment_cancel = None
+        response_description = "Success"
+        status_code = None
+        fulfillment_move = None
+        fulfillment_order_return_flag = None
+        fulfillment_orders = None
+        assigned_location = None
+        fulfillment_id = None
+        fulfillment_status = None
+        curr_fulfill_location = None
+        line_items = None
+        fulfillment_line_items = None
+        fulfillment_order_line_items = None
+        item = None
+        product_name = None
+        product_title = None
+        items_condition = None
+        return_flag_item = False
+        return_query_item = None
+        fulfillment_result_flag = False
+        fulfillment_result = None
+        today = self.utils.get_current_date_time()
+        base_dir = self.utils.get_base_directory()
+        return_flag = False
+        orders_array = []
+        order_list = {
+            "number": None,
+            "carrier_name": None,
+            "tracking_number": None,
+            "items": []
+        }
+        items_array = []
+        item_list = {
+            "name": None,
+            "sku": None
+        }
+        try:
+            return_flag, sheets_file_path, return_code = self.syspref.get_sys_pref("FULFILLMENTS_SHEET_FILES_PATH")
+            return_flag, sheet_file_name, return_code = self.syspref.get_sys_pref("FULFILLMENTS_SHEET_FILE_NAME")
+            return_flag, sheet_file_title, return_code = self.syspref.get_sys_pref("FULFILLMENTS_SHEET_FILE_TITLE")
+        except Exception as e:
+            print(f"[ERROR] {e}")
+            return False
+
+        sheet_file_name = sheet_file_name.format(str(today).replace(" ", "_").replace(":", "_"))
+        output_file_path = f"{base_dir}{sheets_file_path}"
+        wb:Workbook = None
+        ws = None
+        sheet_created_flg = False
+        email_from = "COMPANY_NAMEheroku@gmail.com"
+        email_subject = f"Automatic Fulfillment Process - {today}"
+        email_body = None
+        email_list = []
+        email = None
+        email_files = []
+
+        try:
+            result_flag_match_items, orders_array, result_message_csv = self.match_items_from_csv(file_path=file_path, file_name=file_name)
+
+            if result_flag_match_items and orders_array != []:
+                try:
+                    wb = self.utils.create_excel_sheet_if_not_exists(file_path=output_file_path, file_name=sheet_file_name, sheet_name=sheet_file_title)
+                    if not wb:
+                        print(f"[ERROR] Error creating sheet {sheet_file_name}")
+                    else:
+                        sheet_created_flg = True
+                        ws = wb.active
+                        ws.append(["Progress", "Order Id", "Order Number", "Order Status", "Tracking Number", "Item Id", "Fulfillment Id", "Fulfillment Status", "Product Name", "Product Title", "Fulfillable Quantity", "Fulfillment Status", "Description"])
+                except Exception as e:
+                    print(f"[ERROR] - {e}")
+
+                total_orders_to_fulfill = len(orders_array)
+                print(f"[INFO] Getting Orders information...")
+                print(f"[INFO] Progress\t\tOrder Num Order Status\tTracking #\t\tItem Id\t\tFulfillment Id\tStatus\t\tDescription")
+                count_orders = 0
+                count_items = 0
+                for data in orders_array:
+                    count_orders += 1
+                    order_id = data.get("order_id")
+                    order_number = data.get("order_number")
+                    order_created = data.get("order_created")
+                    order_country_code = data.get("order_country_code")
+                    order_fulfillment_status = data.get("order_fulfillment_status")
+                    order_tags = data.get("order_tags")
+                    order_note = data.get("order_note")
+                    tracking_number = data.get("tracking_number")
+                    carrier_name = data.get("carrier_name")
+                    items_array = data.get("items")
+                    line_item_id = None
+                    line_item_fulfillable_quantity = 0
+                    line_item_variant_id = None
+
+                    if order_fulfillment_status.lower() == "unfulfilled" or order_fulfillment_status.lower() == "partial":
+                        can_fulfill = False
+                        return_flag_cancel_fulfill, fulfillment, fulfillment_cancel_req, fulfillment_cancel, response_description, status_code = self.cancel_open_or_in_progress_order_fulfillments(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_id=order_id, order_number=order_number, items=items_array, order_fulfillment_status=order_fulfillment_status, tracking_number=tracking_number, message="Automatic Fulfillment Cancel Process.", new_location_name="COMPANY_NAME", api_version=None)
+
+                        if return_flag_cancel_fulfill:
+                            can_fulfill, fulfillment_move, response_description, status_code = self.move_fulfillment_location(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_id=order_id, order_number=order_number, items=items_array, order_fulfillment_status=order_fulfillment_status, tracking_number=tracking_number, new_location_name="COMPANY_NAME", api_version=None)
+
+                        if can_fulfill:
+                            time.sleep(1)
+                            fulfillment_order_return_flag, fulfillment, response_description, status_code = self.shopify.get_shopify_fulfillment_orders(order_id=order_id, include_financial_summaries=None, include_order_reference_fields=None, api_version=None)
+
+                            if fulfillment_order_return_flag:
+                                fulfillment_orders = fulfillment.get("fulfillment_orders")
+
+                                for fulfill in fulfillment_orders:
+                                    assigned_location = fulfill.get("assigned_location")
+                                    fulfillment_id = fulfill.get("id")
+                                    fulfillment_status = fulfill.get("status")
+                                    curr_fulfill_location = assigned_location.get("name")
+                                    fulfillment_order_line_items = []
+
+                                    if fulfillment_status == "open" or fulfillment_status == "in_progress":
+                                        if curr_fulfill_location == "COMPANY_NAME":
+                                            fulfillment_line_items = fulfill.get("line_items")
+                                            fulfillment_order_line_items = []
+                                            item = {}
+                                            line_item_id = None
+                                            line_item_fulfillable_quantity = 0
+                                            fulfillment_line_item_variant_id = None
+                                            found_item = False
+
+                                            fulfillment_dict = {str(fulfill_item.get("variant_id")): fulfill_item for fulfill_item in fulfillment_line_items}
+                                            found_item = False
+
+                                            for item in items_array:
+                                                line_item_variant_id = str(item.get("variant_id"))
+
+                                                if line_item_variant_id in fulfillment_dict:
+                                                    found_item = True
+                                                    break
+
+                                            if found_item:
+                                                for line_item in fulfillment_line_items:
+                                                    line_item_id = str(line_item.get("id"))
+                                                    line_item_fulfillable_quantity = line_item.get("fulfillable_quantity")
+                                                    fulfillment_line_item_variant_id = str(line_item.get("variant_id"))
+                                                    product_name = None
+                                                    product_title = None
+                                                    line_item_variant_id = None
+                                                    prod_fulfillment_status = "unfulfilled"
+
+                                                    if line_item_fulfillable_quantity > 0:
+                                                        for i in items_array:
+                                                            product_name = i.get("name")
+                                                            product_title = i.get("title")
+                                                            prod_fulfillment_status = i.get("fulfillment_status")
+                                                            line_item_variant_id = str(i.get("variant_id"))
+
+                                                            if line_item_variant_id == fulfillment_line_item_variant_id:
+                                                                self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id=line_item_id, fulfillment_id=f"\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Fulfilling Product '{product_title}' with fulfillment status '{prod_fulfillment_status}'...")
+                                                                # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Fulfilling Product '{product_title}' with fulfillment status '{prod_fulfillment_status}'...")
+                                                                item = {
+                                                                    "id": line_item_id,
+                                                                    "quantity": line_item_fulfillable_quantity
+                                                                }
+                                                                fulfillment_order_line_items.append(item)
+                                                                if sheet_created_flg:
+                                                                    ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, line_item_id, fulfillment_id, fulfillment_status, product_name, product_title, line_item_fulfillable_quantity, prod_fulfillment_status, f"Fulfill Order - Fulfilling Product '{product_title}' with fulfillment status '{prod_fulfillment_status}'..."])
+                                                                break
+                                                    else:
+                                                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id=line_item_id, fulfillment_id=f"\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Product {product_title} with fulfillment status '{prod_fulfillment_status}' is not Fulfillable...")
+                                                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t{line_item_id}\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Product {product_title} with fulfillment status '{prod_fulfillment_status}' is not Fulfillable...")
+                                                        if sheet_created_flg:
+                                                            ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, line_item_id, fulfillment_id, fulfillment_status, product_name, product_title, line_item_fulfillable_quantity, prod_fulfillment_status, f"Fulfill Order - Product {product_title} with fulfillment status '{prod_fulfillment_status}' is not Fulfillable..."])
+                                        else:
+                                            self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Location not set to COMPANY_NAME...")
+                                            # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Location not set to COMPANY_NAME...")
+                                            if sheet_created_flg:
+                                                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", fulfillment_id, fulfillment_status, "", "", "", "", f"Fulfill Order - Location not set to COMPANY_NAME..."])
+                                    else:
+                                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Order is already fulfilled or canceled...")
+                                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Order is already fulfilled or canceled...")
+                                        if sheet_created_flg:
+                                            ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", fulfillment_id, fulfillment_status, "", "", "", "", f"Fulfill Order - Order is already fulfilled or canceled"])
+
+                                    if fulfillment_order_line_items != []:
+                                        fulfillment_result_flag, fulfillment_result, response_description, status_code = self.shopify.post_shopify_fulfillments(fulfillment_order_id=fulfillment_id, fulfillment_order_line_items=fulfillment_order_line_items, quantity=line_item_fulfillable_quantity, message=None, notify_customer=False, origin_address=None, tracking_number=tracking_number, tracking_url=None, carrier_name=None, api_version=None)
+                                        if fulfillment_result_flag:
+                                            self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Fulfilled Successfully")
+                                            # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Fulfilled Successfully")
+                                            if sheet_created_flg:
+                                                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", fulfillment_id, fulfillment_status, "", "", "", "", "Fulfill Order - Items Fulfilled Successfully"])
+                                        else:
+                                            self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - Error while fulfilling order. Error: {response_description}")
+                                            # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - Error while fulfilling order. Error: {response_description}")
+                                            if sheet_created_flg:
+                                                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", fulfillment_id, fulfillment_status, "", "", "", "", f"Fulfill Order - Error while fulfilling order. Error: {response_description}"])
+                                    else:
+                                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - No Items to Fulfill")
+                                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - No Items to Fulfill")
+                                        if sheet_created_flg:
+                                            ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", fulfillment_id, fulfillment_status, "", "", "", "", "Fulfill Order - No Items to Fulfill"])
+                            else:
+                                self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id=f"\t\t\t{fulfillment_id}", fulfillment_status=f"\t{fulfillment_status}", description=f"\tFulfill Order - {response_description}")
+                                # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t{fulfillment_id}\t{fulfillment_status if len(fulfillment_status) >= 11 else fulfillment_status + '\t'}\tFulfill Order - {response_description}")
+                                if sheet_created_flg:
+                                    ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - {response_description}"])
+                        else:
+                            self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id="", fulfillment_status="", description=f"\t\t\t\t\t\t\tFulfill Order - {response_description}")
+                            # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t\t\t\t\tFulfill Order - {response_description}")
+                            if sheet_created_flg:
+                                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - {response_description}"])
+                    else:
+                        self.print_fulfillment_log(count_orders=count_orders, total_orders_to_fulfill=total_orders_to_fulfill, order_number=order_number, order_fulfillment_status=order_fulfillment_status, tracking_number=f"\t{tracking_number}", line_item_id="", fulfillment_id="", fulfillment_status="", description=f"\t\t\t\t\t\t\tFulfill Order - Order is already fulfilled or canceled")
+                        # print(f"[INFO] {count_orders}...{total_orders_to_fulfill}{'\t\t' if len(str(count_orders) + str(total_orders_to_fulfill)) < 6 else '\t'}{order_number} {order_fulfillment_status}\t{tracking_number if len(tracking_number) >= 16 else tracking_number + '\t'}\t\t\t\t\t\t\tFulfill Order - Order is already fulfilled or canceled")
+                        if sheet_created_flg:
+                            ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - Order is already fulfilled or canceled"])
+                        else:
+                            if sheet_created_flg:
+                                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - Order not found for Order Number: {order_number}"])
+            else:
+                print(f"[ERROR] Error while matching items. Error: {result_message_csv}")
+                if sheet_created_flg:
+                    ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - Error while matching items. Error: {result_message_csv}"])
+
+            if sheet_created_flg:
+                wb.save(output_file_path + sheet_file_name)
+                print(f"[INFO] Sheet {sheet_file_name} saved successfully")
+
+        except Exception as e:
+            print(f"[ERROR] Error while fulfilling orders. Error: {str(e)}")
+            if sheet_created_flg:
+                ws.append([f"{count_orders}...{total_orders_to_fulfill}", order_id, order_number, order_fulfillment_status, tracking_number, "", "", "", "", "", "", "", f"Fulfill Order - Error while fulfilling orders. Error: {str(e)}"])
+                wb.save(output_file_path + sheet_file_name)
+                print(f"[INFO] Sheet {sheet_file_name} saved successfully")
+                self.utils.send_exception_email(module=self.get_module_name(), function="fulfill_orders", error=str(e), additional_info=None, start_time=0, end_time=0)
+        finally:
+            print(f"[INFO] Sending email to {email_to}...")
+            email_body = f"Hello,\n\nThis is an automated email regarding the Order Fulfillment Process."
+            email_body += f"\n\nAttached is the result of the Order Fulfillment Process, sent on {today}."
+            email_body += f"\n\nA Total of {total_orders_to_fulfill} orders was/were fulfilled."
+            
+            if not result_flag_match_items:
+                email_body += f"\n\nError while matching items. Error:\n{result_message_csv}"
+
+            for email in str(email_to.replace(' ', '')).split(','):
+                email_list.append(email)
+
+            if sheet_created_flg:
+                email_files.append(sheet_file_name)
+                result_flag, result_string = self.utils.send_email(email_from=email_from, email_to=email_list, email_subject=email_subject, email_body=email_body, file_path=output_file_path, file_names=email_files)
+            else:
+                result_flag, result_string = self.utils.send_email(email_from=email_from, email_to=email_list, email_subject=email_subject, email_body=email_body, file_path=None, file_names=None)
+
+            self.utils.delete_files(sheet_file_path=output_file_path, pdf_file_path=None, sheet_file_names=email_files, pdf_file_names=None)
+            self.utils.delete_files(sheet_file_path=file_path, pdf_file_path=None, sheet_file_names=[file_name], pdf_file_names=None)
+
+            print(f"[INFO] END - Finished Fulfilling Orders...")
+            print("\n[INFO] Clearing variables...")
+            try:
+                del result_flag_match_items, result_data_csv, result_message_csv, total_orders_to_fulfill, count_orders, count_items, order_number, tracking_number, order_condition, return_flag_order, prod_fulfillment_status, return_query_order, order_id, order_created, order_country_code, order_fulfillment_status, order_tags, order_note, line_item_id, line_item_fulfillable_quantity, fulfillment_line_item_variant_id, line_item_variant_id, found_item, can_fulfill, return_flag_cancel_fulfill, fulfillment, fulfillment_cancel_req, fulfillment_cancel, response_description, status_code, fulfillment_move, fulfillment_order_return_flag, fulfillment_orders, assigned_location, fulfillment_id, fulfillment_status, curr_fulfill_location, line_items, fulfillment_line_items, fulfillment_order_line_items, item, product_name, product_title, items_condition, return_flag_item, return_query_item, fulfillment_result_flag, fulfillment_result, today, base_dir, return_flag, orders_array, order_list, items_array, item_list, sheets_file_path, sheet_file_name, sheet_file_title, output_file_path, wb, ws, sheet_created_flg, email_from, email_subject, email_body, email_list, email, email_files, result_flag
             except Exception as e:
                 print(f"Variable not found: {e}")
                 pass
@@ -2636,50 +4999,152 @@ class OrderController(DataController):
             return False, {}, f"Error while getting order with ID: {order_id} and name: {order_name} - Error: {str(e)}", 500
         finally:
             try:
-                del order_json
-                del line_items
-                del columns_order
-                del columns_items
-                del order_columns
-                del line_items_columns
-                del order_condition
-                del line_items_condition
-                del order_result_query
-                del line_items_result_query
-                del item
-                del response_description
-                del status_code
-                del billing_address
-                del client_details
-                del company
-                del current_total_additional_fees_set
-                del customer
-                del discount_applications
-                del discount_codes
-                del fulfillments
-                del note_attributes
-                del original_total_additional_fees_set
-                del original_total_duties_set
-                del payment_terms
-                del payment_gateway_names
-                del refunds
-                del shipping_address
-                del shipping_lines
-                del subtotal_price_set
-                del tax_lines
-                del total_discounts_set
-                del total_line_items_price_set
-                del total_price
-                del total_price_set
-                del total_tax_set
-                del tracking_info
-                del item_price_set
-                del item_total_discount_set
-                del item_discount_allocations
-                del total_shipping_price_set
-                del item_tax_lines
+                del order_json, line_items, columns_order, columns_items, order_columns, line_items_columns, order_condition, line_items_condition, order_result_query, line_items_result_query, item, response_description, status_code, billing_address, client_details, company, current_total_additional_fees_set, customer, discount_applications, discount_codes, fulfillments, note_attributes, original_total_additional_fees_set, original_total_duties_set, payment_terms, payment_gateway_names, refunds, shipping_address, shipping_lines, subtotal_price_set, tax_lines, total_discounts_set, total_line_items_price_set, total_price, total_price_set, total_tax_set, tracking_info, item_price_set, item_total_discount_set, item_discount_allocations, total_shipping_price_set, item_tax_lines
             except Exception as e:
                 print(f"Variable not found: {e}")
+                pass
+
+    def get_list_of_orders(self, since_id, order_number, fields, product_name, product_variant, order_status, created_at_min, created_at_max, refunded_flag, prod_sku, country_code, received_back_date_min, received_back_date_max, tracking_number, is_fulfilled_flag, fulfilled_date_min, fulfilled_date_max, is_cancelled_flag, fulfillment_status, limit="50", order_by="asc"):
+        """
+        Retrieves a list of orders from the ORDER_DETAILS_VIEW based on the specified filters.
+        View Columns:
+            ORDER_NAME
+            CREATED_AT
+            ORDER_FULFILLMENT
+            ORDER_STATUS
+            ORDER_CANCELLED
+            PRODUCT_ID
+            ITEM_TITLE
+            VARIANT_TITLE
+            ITEM_SKU
+            ITEM_QUANTITY
+            ITEM_FULFILLMENT
+            REFUNDED
+            COUNTRY_CODE
+            PROPERTIES
+            TAGS
+
+        Args:
+            since_id (str): The minimum order name for retrieval. (View Column: ORDER_NAME)
+            order_number (str): The order number to filter. (View Column: ORDER_NAME)
+            fields (str): The fields to retrieve (Can be: ORDER_NAME, CREATED_AT, ORDER_FULFILLMENT, ORDER_STATUS, ORDER_CANCELLED, PRODUCT_ID, ITEM_TITLE, VARIANT_TITLE, ITEM_SKU, ITEM_FULFILLMENT, REFUNDED, COUNTRY_CODE, PROPERTIES, TAGS)
+            created_at_min (str): The minimum creation date for filtering. (View Column: CREATED_AT)
+            created_at_max (str): The maximum creation date for filtering. (View Column: CREATED_AT)
+            fulfillment_status (str): The fulfillment status to filter. (View Column: ORDER_FULFILLMENT)
+            order_status (str): The order status filter with 'Yes' ou 'No' string. (View Column: ORDER_STATUS)
+            is_cancelled_flag (bool): Filter for cancelled flag. (View Column: ORDER_CANCELLED)
+            product_id (str): The product ID to filter. (View Column: PRODUCT_ID)
+            product_name (str): The product name to filter. (View Column: ITEM_TITLE)
+            product_variant (str): The product variant to filter. (View Column: VARIANT_TITLE)
+            prod_sku (str): The product SKU to filter. (View Column: ITEM_SKU)
+            ITEM_FULFILLMENT
+            refunded_flag (bool): Refunded flag to filter as 'true' or 'false'. (View Column: REFUNDED)
+            COUNTRY_CODE
+            PROPERTIES
+            TAGS
+            limit (str): The maximum number of records to retrieve. Default is "50".
+            order_by (str): The order of retrieval. Default is "asc".
+    
+            received_back_date_min (str): The minimum received back date for filtering.
+            received_back_date_max (str): The maximum received back date for filtering.
+            is_fulfilled_flag (bool): Filter for fulfilled flag.
+            fulfilled_date_min (str): The minimum fulfilled date for filtering.
+            fulfilled_date_max (str): The maximum fulfilled date for filtering.
+            
+
+        Returns:
+            tuple: (bool, list or str, int) indicating success, the list of orders or error message, and HTTP status code.
+        """
+        print(f"\n[INFO] BEGIN - Getting list of orders from ORDER_DETAILS_VIEW.")
+        orders_list = []
+        order = {}
+        columns = []
+
+        if order_number is not None and order_number != "":
+            order_number = f"#{str(order_number).upper()}" if "#" not in order_number else str(order_number).upper()
+        if is_cancelled_flag is not None:
+            is_cancelled_flag = 'TRUE' if str(is_cancelled_flag).lower() == 'true' else 'FALSE'
+        if is_fulfilled_flag is not None:
+            is_fulfilled_flag = 'TRUE' if str(is_fulfilled_flag).lower() == 'true' else 'FALSE'
+        if fulfillment_status is not None:
+            fulfillment_status = str(fulfillment_status).lower() if str(fulfillment_status).lower() != "unfulfilled" else "IS NULL"
+        if refunded_flag is not None:
+            refunded_flag = 'refunded' if str(refunded_flag).lower() == 'true' else ''
+        if order_status is not None:
+            order_status = 'Yes' if str(order_status).lower() == 'yes' else 'No'
+
+        if fields is not None:
+            fields = fields.replace(" ", "").upper()
+            if ',' in fields:
+                columns = [field.strip() for field in fields.split(',')]
+            else:
+                columns.append(fields.strip())
+        else:
+            columns = ['*']
+        columns = ['*'] if len(columns) == 0 else columns
+
+        condition = "1=1"
+        condition += (f"\nAND ORDER_NAME >= '{since_id}'" if order_by.lower() == "asc" else f"\nAND ORDER_NAME <= '{since_id}'") if since_id is not None else ""
+        condition += f"\nAND ORDER_NAME LIKE '%{order_number}%'" if order_number is not None else ""
+        condition += f"\nAND ITEM_TITLE LIKE '%{product_name}%'" if product_name is not None else ""
+        condition += f"\nAND VARIANT_TITLE LIKE '%{product_variant}%'" if product_variant is not None else ""
+        condition += f"\nAND CREATED_AT >= '{created_at_min}'" if created_at_min is not None else ""
+        condition += f"\nAND CREATED_AT <= '{created_at_max}'" if created_at_max is not None else ""
+        condition += f"\nAND ITEM_SKU LIKE '%{prod_sku}%'" if prod_sku is not None else ""
+        condition += f"\nAND COUNTRY_CODE LIKE '%{country_code}%'" if country_code is not None else ""
+        condition += f"\nAND ORDER_STATUS = {order_status}" if order_status is not None else ""
+        condition += f"\nAND ORDER_CANCELLED = {is_cancelled_flag}" if is_cancelled_flag is not None else ""
+        condition += f"\nAND REFUNDED = '{refunded_flag}'" if refunded_flag is not None else ""
+        condition += f"\nORDER BY ORDER_NAME ASC" if order_by.lower() == "asc" else f"\nORDER BY ORDER_NAME DESC"
+
+        # Terminar de alterar as conditions de acordo com as colunas da view.
+        # ORDER_FULFILLMENT
+
+
+        # PRODUCT_ID
+
+
+        # ITEM_QUANTITY
+        # ITEM_FULFILLMENT
+        # REFUNDED
+        # COUNTRY_CODE
+        # TAGS
+
+
+        if limit is None or str(limit) == "0" or limit == "":
+            condition += f"\nLIMIT 50"
+        else:
+            if str(limit).lower() != "all":
+                condition += f"\nLIMIT {str(limit)}"
+
+        result_flag = False
+        result_query = None
+        row = None
+        value = None
+
+        try:
+            print(f"[INFO] Condition: {condition}")
+            result_flag, result_query = super().query_record("COMPANY_NAME.ORDER_DETAILS_VIEW", columns, condition)
+            if result_flag:
+                print(f"[INFO] Got {len(result_query)} orders from ORDER_DETAILS_VIEW.")
+                for row in result_query:
+                    order = {}
+                    for column in columns:
+                        order[column] = row[column]
+                    orders_list.append(order)
+                return True, orders_list, 200
+            else:
+                print(f"[ERROR] Error getting orders from ORDER_DETAILS_VIEW. Error: {result_query}")
+                return False, result_query, 404
+        except Exception as e:
+            self.log.log_error(repository_name=self.utils.get_REPOSITORY_NAME(), module_name=self.get_module_name(), function_name="get_list_of_orders", error_code=500, error_message=str(e), additional_details=None, error_severity=self.utils.get_error_severity(3))
+            print(f"[ERROR] - {e}")
+            return False, str(e), 500
+        finally:
+            print("[INFO] Cleaning up variables")
+            try:
+                del orders_list, order, columns, condition, result_flag, result_query, row
+            except:
                 pass
 
     # WEBHOOK FUNCTIONS
@@ -2804,6 +5269,7 @@ class OrderController(DataController):
             else:
                 return False, response, response, status_code
         except Exception as e:
+            print(f"[ERROR] Error while getting order from MQ: {e}")
             return False, response, f"{str(e)}", 400
         finally:
             try:
@@ -2844,7 +5310,7 @@ class OrderController(DataController):
                     is_order_upserted_success, is_item_upserted_success, total_order_upserted_count, items_upserted_count, last_order_id = self.process_order_and_line_items(order_json=order_json)
 
                 else:
-                    self.utils.set_end_time(time.time())
+                    self.utils.set_end_time(self.utils.get_current_date_time())
                     print("[INFO] No orders found.")
                     print(f"[INFO] Waiting {self.utils.get_WAIT_TIME()} second(s) to try again...")
                     time.sleep(int(self.utils.get_WAIT_TIME()))
@@ -2860,19 +5326,7 @@ class OrderController(DataController):
             finally:
                 print("[INFO] Clearing variables...")
                 try:
-                    del line_items
-                    del last_order_id
-                    del last_order_line_item_id
-                    del total_order_upserted_count
-                    del items_count
-                    del items_upserted_count
-                    del line_item
-                    del line_item_updated_count
-                    del is_order_upserted_success
-                    del response_description
-                    del additional_details
-                    del order_json
-                    del is_item_upserted_success
-                    del status_code
+                    del line_items, last_order_id, last_order_line_item_id, total_order_upserted_count, items_count, items_upserted_count, line_item, line_item_updated_count, is_order_upserted_success, response_description, additional_details, order_json, is_item_upserted_success, status_code
+                    gc.collect()
                 except:
                     pass

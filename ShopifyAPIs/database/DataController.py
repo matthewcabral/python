@@ -1,19 +1,48 @@
-from .Controller import Controller, psycopg2, pd, errors, mysql, json, IntegrityError, string
+from .Controller import Controller, psycopg2, errors, mysql, IntegrityError, string
 
 class DataController(Controller):
+    """
+    DataController: Inherits from Controller to manage database operations.
 
+    This class extends the Controller class to provide additional methods for opening, 
+    closing, and executing commands on a database. It supports MySQL and PostgreSQL 
+    connections.
+
+    Methods:
+        __init__(): Initializes the DataController.
+        open_db_connection(): Opens a connection to the database.
+        close_db_connection(conn): Closes the given database connection.
+        exec_db_cmd(command): Executes a database command (INSERT, UPDATE, DELETE).
+        get_sysdate(): Returns the system date format based on the database type.
+        convert_Date(date): Converts a date to the appropriate format based on the database type.
+        query_record(table, columns, condition): Queries records from a database table.
+        insert_record(table, columns, values): Inserts records into a database table.
+        update_record(table, columns, values, condition): Updates records in a database table.
+        delete_record(table, condition): Deletes records from a database table.
+        generate_next_id(): Generates the next ROW ID (specific to the application).
+    """
     # Class constructor
     def __init__(self):
         super().__init__()
 
     # Function to open database connection
     def open_db_connection(self):
+        """
+        Opens a connection to the database based on the driver specified in environment variables.
+
+        Returns:
+            conn (connection): The database connection object.
+            bool: False if the connection fails.
+        """
         try:
             if super().get_DB_DRIVER().upper() == "ORACLE":
+                #print("[INFO] Connecting to Oracle database...")
                 conn = psycopg2.connect(database=super().get_DB_NAME(), user=super().get_DB_USER(), password=super().get_DB_PASSWORD(), host=super().get_DB_HOST(), port=super().get_DB_PORT())
             elif super().get_DB_DRIVER().upper() == "MYSQL":
+                #print("[INFO] Connecting to MySQL database...")
                 conn = mysql.connector.connect(user=super().get_DB_USER(), password=super().get_DB_PASSWORD(), host=super().get_DB_HOST(), port=super().get_DB_PORT(), database=super().get_DB_NAME())
             else:
+                #print("[INFO] Connecting to PostgreSQL database...")
                 conn = psycopg2.connect(database=super().get_DB_NAME(), user=super().get_DB_USER(), password=super().get_DB_PASSWORD(), host=super().get_DB_HOST(), port=super().get_DB_PORT())
             return conn
         except Exception as e:
@@ -22,7 +51,17 @@ class DataController(Controller):
 
     # Function to close database connection
     def close_db_connection(self, conn):
+        """
+        Closes the given database connection.
+
+        Args:
+            conn (connection): The database connection object to close.
+
+        Returns:
+            bool: True if the connection was closed successfully, False otherwise.
+        """
         try:
+            #print("[INFO] Closing database connection...")
             conn.close()
             return True
         except Exception as e:
@@ -31,6 +70,15 @@ class DataController(Controller):
 
     # Function to insert/update/delete from tables on the database
     def exec_db_cmd(self, command):
+        """
+        Executes a database command (INSERT, UPDATE, DELETE).
+
+        Args:
+            command (str): The SQL command to execute.
+
+        Returns:
+            tuple: (bool, int, str) indicating success, number of rows affected, and message.
+        """
         conn = self.open_db_connection()
         if conn != False:
             rowcount = 0
@@ -54,6 +102,12 @@ class DataController(Controller):
 
     # Return the SYSTEM DATE format according to the database
     def get_sysdate(self):
+        """
+        Returns the system date format according to the database type.
+
+        Returns:
+            str: The system date format.
+        """
         sysdate = "CURRENT_TIMESTAMP(6)"
         db_driver_upper = super().get_DB_DRIVER().upper()
 
@@ -68,6 +122,15 @@ class DataController(Controller):
 
     # Date conversion
     def convert_Date(self, date):
+        """
+        Converts a date to the appropriate format based on the database type.
+
+        Args:
+            date (str): The date string to convert.
+
+        Returns:
+            str: The converted date string.
+        """
         date_converted = ""
         db_driver_upper = super().get_DB_DRIVER().upper()
 
@@ -82,6 +145,17 @@ class DataController(Controller):
 
     # function to query in the database tables
     def query_record(self, table, columns, condition):
+        """
+        Queries records from a database table.
+
+        Args:
+            table (str): The name of the table.
+            columns (list): List of columns to retrieve.
+            condition (str): The condition for the query.
+
+        Returns:
+            tuple: (bool, list) indicating success and the list of records.
+        """
         array_columns = ""
         sql_header = "SELECT"
         sql_column = ""
@@ -138,6 +212,17 @@ class DataController(Controller):
 
     # Insert records into database tables
     def insert_record(self, table, columns, values):
+        """
+        Inserts records into a database table.
+
+        Args:
+            table (str): The name of the table.
+            columns (list): List of columns.
+            values (list): List of values corresponding to the columns.
+
+        Returns:
+            tuple: (bool, int, str) indicating success, number of rows inserted, and message.
+        """
         row_Inserted_Flag = False
         array_columns = ""
         array_values = ""
@@ -167,7 +252,7 @@ class DataController(Controller):
 
             for j in range(len(values)):
                 if type(values[j]) == str:
-                    if values[j] == 'CURRENT_TIMESTAMP(6)' or values[j] == 'SYSDATE' or values[j] == 'SYSDATE()' or values[j] == 'NULL' or values[j] == 'null':
+                    if values[j] == 'CURRENT_TIMESTAMP(6)' or values[j] == 'SYSDATE' or values[j] == 'SYSDATE()' or values[j] == 'NULL' or values[j] == 'null' or "DATE_FORMAT" in values[j] or "TO_DATE" in values[j] or "DATEDIFF" in values[j] or values[j] == "FALSE" or values[j] == "TRUE":
                         array_values += ", " + str(values[j])
                     else:
                         array_values += ", '" + str(values[j]) + "'"
@@ -176,19 +261,31 @@ class DataController(Controller):
 
             sql_header += f"""INSERT INTO {super().get_DB_OWNER()}.{table}"""
             sql_column += f""" (ROW_ID, CREATED, CREATED_BY, LAST_UPD, LAST_UPD_BY, MODIFICATION_NUM, DB_LAST_UPD{array_columns})"""
-            sql_value += f""" \nVALUES ((SELECT NEXT_ID FROM {super().get_DB_OWNER()}.{super().get_tbl_ID()} WHERE ROW_ID = '0-1'), {self.get_sysdate()}, '0-1', {self.get_sysdate()}, '0-1', 0, {self.get_sysdate()}{array_values})"""
+            sql_value += f""" \nVALUES ((SELECT NEXT_ID FROM {super().get_DB_OWNER()}.{super().get_tbl_ID()} WHERE ROW_ID = '0-1'), {self.get_sysdate()}, SUBSTRING_INDEX(CURRENT_USER(), '@', 1), {self.get_sysdate()}, SUBSTRING_INDEX(CURRENT_USER(), '@', 1), 0, {self.get_sysdate()}{array_values})"""
 
             sql_final_cmd += sql_header + sql_column + sql_value
+            # print(f"[INFO] Inserting record into database...\t-\t[COMMAND] {sql_final_cmd}")
             row_Inserted_Flag, rowcount, return_string = self.exec_db_cmd(sql_final_cmd)
 
             if row_Inserted_Flag == True:
-                #self.generate_next_id()
                 self.generate_next_id()
 
         return row_Inserted_Flag, rowcount, return_string
 
     # Update records into database tables
     def update_record(self, table, columns, values, condition):
+        """
+        Updates records in a database table.
+
+        Args:
+            table (str): The name of the table.
+            columns (list): List of columns.
+            values (list): List of values corresponding to the columns.
+            condition (str): The condition for the update.
+
+        Returns:
+            tuple: (bool, int, str) indicating success, number of rows updated, and message.
+        """
         return_string = "Success"
         row_updated_flag = False
         array_columns_values = ""
@@ -220,7 +317,7 @@ class DataController(Controller):
                     array_columns_values += f"\t"
 
                 if type(values[i]) == str:
-                    if values[i] == 'CURRENT_TIMESTAMP(6)' or values[i] == 'SYSDATE' or values[i] == 'SYSDATE()' or values[i] == 'NULL' or values[i] == 'null':
+                    if values[i] == 'CURRENT_TIMESTAMP(6)' or values[i] == 'SYSDATE' or values[i] == 'SYSDATE()' or values[i] == 'NULL' or values[i] == 'null' or "DATE_FORMAT" in values[i] or "TO_DATE" in values[i] or "DATEDIFF" in values[i] or values[i] == "FALSE" or values[i] == "TRUE":
                         array_columns_values += str(columns[i]).upper() +  " = " + str(values[i])
                     else:
                         array_columns_values += str(columns[i]).upper() +  " = '" + str(values[i]) + "'"
@@ -230,7 +327,7 @@ class DataController(Controller):
             if table is not super().get_tbl_ID():
                 array_columns_values += ",\n\tMODIFICATION_NUM = MODIFICATION_NUM"
                 array_columns_values += ",\n\tLAST_UPD = " + self.get_sysdate()
-                array_columns_values += ",\n\tLAST_UPD_BY = '0-1'"
+                array_columns_values += ",\n\tLAST_UPD_BY = SUBSTRING_INDEX(CURRENT_USER(), '@', 1)"
                 array_columns_values += ",\n\tDB_LAST_UPD = " + self.get_sysdate()
 
             sql_column_values += array_columns_values
@@ -241,6 +338,16 @@ class DataController(Controller):
 
     # Delete records into database tables
     def delete_record(self, table, condition):
+        """
+        Deletes records from a database table.
+
+        Args:
+            table (str): The name of the table.
+            condition (str): The condition for the delete.
+
+        Returns:
+            tuple: (bool, int, str) indicating success, number of rows deleted, and message.
+        """
         return_string = "Success"
 
         row_deleted_flag = False
@@ -261,6 +368,12 @@ class DataController(Controller):
 
     # Function to generate ROW ID (PLEASE, DO NOT CHANGE THIS TO AVOID ERRORS!)
     def generate_next_id(self):
+        """
+        Generates the next ROW ID (specific to the application).
+
+        Returns:
+            str: The next ID.
+        """
         prefix = '0'
         suffix = '0'
         counter = 0
@@ -310,7 +423,7 @@ class DataController(Controller):
                     for i in range(suffix_length + 1):
                         if keep_checking:
                             if str(suffix)[suffix_length - 1 - i] == 'Z':
-                                suffix = str(suffix)[0:suffix_length - 1 - i] + str(characters[0]) + str(suffix)[suffix_length - i:]
+                                suffix = str(suffix)[0:suffix_length - 1 - i] + str(characters[0]) + str(suffix)[suffix_length - i:] 
                                 keep_checking = True
                             else:
                                 if i == suffix_length + 1:

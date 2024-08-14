@@ -64,7 +64,7 @@ class LogsController(DataController):
 
         keep_trying = True
         count_try = 0
-        
+
         self.utils.clear_columns_values_arrays()
         self.utils.validate_columns_values("REPOSITORY_NAME", self.utils.replace_special_chars(log.get_repository_name()))
         self.utils.validate_columns_values("MODULE_NAME", self.utils.replace_special_chars(log.get_module_name()))
@@ -82,7 +82,7 @@ class LogsController(DataController):
                 print(f"[INFO] Trying to insert Log again....Try: {count_try}")
                 super().generate_next_id()
                 log_inserted_flag, log_inserted_count, result_string = super().insert_record(super().get_tbl_LOGS(), self.utils.get_columns_array(), self.utils.get_values_array())
-                
+
                 if log_inserted_flag == True:
                     print(f"[INFO] Log Inserted...\t")
                     keep_trying = False
