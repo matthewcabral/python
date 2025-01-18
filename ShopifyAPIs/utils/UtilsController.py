@@ -16,7 +16,12 @@ import boto3
 import asyncio
 import qrcode
 import gc
+import base64
+import re
 
+from io import BytesIO
+from PIL import Image
+from fpdf import FPDF
 from decimal import Decimal
 from typing import List
 from datetime import datetime, timedelta
@@ -582,7 +587,24 @@ class UtilsController():
     def convert_object_to_json(self, json_string, **kwargs):
         return json.dumps(obj=json_string, ensure_ascii=False)
 
-    def generate_qr_code(self, output_file_path=None, data=None, box_size=10, border=4, fit=True, fill_color="black", back_color="white"):
+    def generate_qr_code(self, output_file_path=None, data=None, file_type="PNG", box_size=10, border=4, resolution=None, fit=True, fill_color="black", back_color="white"):
+        """
+        Generates a QR code based on the provided data and saves it in the desired file format.
+
+        Args:
+            output_file_path (str): Directory path where the QR code will be saved.
+            data (str): The data to encode into the QR code.
+            file_type (str): The desired file type (e.g., PNG, JPG, PDF, HTML).
+            box_size (int): Size of each square in the QR code grid.
+            border (int): Border size (minimum is 4).
+            resolution (tuple): Desired resolution (width, height) in pixels for the image.
+            fit (bool): Automatically adjust the QR code version to fit the data.
+            fill_color (str): Color of the QR code.
+            back_color (str): Background color of the QR code.
+
+        Returns:
+            tuple: (bool, str) indicating success and the file path or error message.
+        """
         qr = None
         img = None
         img_path = None
@@ -591,16 +613,50 @@ class UtilsController():
             return False, "[ERROR] Missing parameters: output_file_path or data is None."
         else:
             try:
-                # Generate QR Code
-                qr = qrcode.QRCode(version=1, error_correction=qrcode.constants.ERROR_CORRECT_L, box_size=box_size, border=border)
+                # Create a QRCode instance with automatic version selection
+                qr = qrcode.QRCode(
+                    version=None,  # Automatically adjusts the version
+                    error_correction=qrcode.constants.ERROR_CORRECT_L,
+                    box_size=box_size,
+                    border=border,
+                )
                 qr.add_data(data)
-                qr.make(fit=fit)
+                qr.make(fit=fit)  # Automatically determine the smallest grid size
+
+                # Generate the QR code image
                 img = qr.make_image(fill_color=fill_color, back_color=back_color)
 
-                # Save the QR code as a temporary image
-                img_path = os.path.join(output_file_path, f"{data}.png")
-                img.save(img_path)
-                # print(f"[INFO] QR Code generated: {img_path}")
+                if resolution:
+                    img = img.resize(resolution)
+
+                # Sanitize the data to create a valid filename
+                # print(f"[INFO] Data Name: {data}")
+                sanitized_name = re.sub(r'[<>:"/\\|?*]', '_', data)
+                # print(f"[INFO] Sanitized Name: {sanitized_name}")
+                file_name = f"{sanitized_name}.{file_type.lower()}"
+                # print(f"[INFO] File Name: {file_name}")
+                img_path = os.path.join(output_file_path, file_name)
+                # print(f"[INFO] Image Path Name: {img_path}")
+
+                # # Define the output file path based on the chosen file type
+                # file_name = f"{data}.{file_type.lower()}"
+                # img_path = os.path.join(output_file_path, file_name)
+
+                # Save the image in the specified file type
+                if file_type.upper() == "PNG":
+                    img.save(img_path)
+                elif file_type.upper() == "JPG" or file_type.upper() == "JPEG":
+                    img.convert("RGB").save(img_path, format="JPEG")
+                elif file_type.upper() == "PDF":
+                    img.convert("RGB").save(img_path, format="PDF")
+                elif file_type.upper() == "HTML":
+                    # Example: Embed the QR code image in a simple HTML file
+                    html_content = f"<html><body><img src='data:image/png;base64,{self.img_to_base64(img)}'></body></html>"
+                    with open(img_path, "w") as html_file:
+                        html_file.write(html_content)
+                else:
+                    return False, f"[ERROR] Unsupported file type: {file_type}."
+
                 return True, img_path
             except Exception as e:
                 return False, f"[ERROR] Error generating QR Code: {e}"
@@ -609,6 +665,14 @@ class UtilsController():
                     del qr, img, img_path
                 except:
                     pass
+
+    def img_to_base64(self, img):
+        """Converts a QR code image to a Base64 string for embedding in HTML."""
+        buffer = BytesIO()
+        img.save(buffer, format="PNG")
+        buffer.seek(0)
+        img_str = base64.b64encode(buffer.read()).decode("utf-8")
+        return img_str
 
     def generate_barcode(self, data=None, barHeight=60, barWidth=1):
         barcode = None
